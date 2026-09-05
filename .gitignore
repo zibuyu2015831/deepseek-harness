@@ -38,3 +38,6 @@ apps/web/dist/
 worktrees/
 .agents/worktrees/
 .typert-*/
+
+# AICC 文档框架挂载点（指向仓库外的符号链接，不可移植）
+AI-Coding-Context
