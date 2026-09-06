@@ -5,7 +5,7 @@ keywords: generation-plan | deepseek-harness | monorepo | cordis | agent-harness
 scope: deepseek-harness 仓库 dev_docs 文档体系首次生成方案（packages/ apps/ vendor/ docs/）
 related_files: package.json | pnpm-workspace.yaml | AGENTS.md | docs/architecture.md | docs/AGENTS.md | docs/testing.md | docs/development.md | packages/README.md | scripts/translation-pairing.ts | scripts/verify-md-links.ts | scripts/verify-md-wrap.ts | scripts/verify-doc-budgets.ts | scripts/run-gates.ts | packages/llm/README.md | packages/session/session-telemetry-otel/README.md | packages/bundle/base/README.md | apps/cli/src/bin.ts | vitest.config.ts
 dependencies: dev_docs/_analysis/project_analysis_report.md | dev_docs/_analysis/generation_progress.md
-verified_at: 2026-08-18
+verified_at: 2026-09-06
 ---
 
 # DeepSeek Harness - AI 文档生成方案
@@ -17,7 +17,8 @@ verified_at: 2026-08-18
 - **主要技术栈**: TypeScript 6 (ESM) + Cordis 插件框架（vendored）+ pnpm 11 workspaces + Vitest 4 + tsdown/tsc 双面构建 + React/Vite Web 前端 + Python SDK
 - **方案创建日期**: 2026-08-18
 - **预计执行耗时**: 18-26 小时（分 7 批）
-- **当前阶段**: Phase 1 方案复查完成，等待人工审核（**未获正式生成授权**）
+- **方案复核日期**: 2026-09-06（统计数全量复核并回写，见"复核记录"）
+- **当前阶段**: 方案已获用户审核通过，**已授权正式生成**；批次 1-5 可执行，批次 6 仍受其硬性前置条件约束
 
 ---
 
@@ -31,14 +32,14 @@ verified_at: 2026-08-18
 
 1. **代码规模**
 
-   - 文件数量: 7,238 个（已排除框架、`node_modules/`、`.git/` 等标准排除目录）
-   - 代码行数: TypeScript 501,274 行 + TSX 66,872 行 + Python 4,373 行；Markdown 170,752 行
+   - 文件数量: 9,072 个（已排除框架、`node_modules/`、`.git/` 等标准排除目录）
+   - 代码行数: TypeScript 684,902 行 + TSX 82,677 行 + Python 8,718 行；Markdown 255,250 行
    - 影响: **高**
 
 2. **架构复杂度**
 
-   - 架构特点: Monorepo（219 个 workspace 包）+ 插件化运行时（"一切皆插件"）+ 能力接缝（Service Definition / Provider / Consumer 三角）+ 双编译面（host / client）+ 多进程协议（JSON-RPC / ACP）
-   - 模块数量: `packages/` 下 49 个包组，219 个 workspace 包，9 个 vendored 包，2 个 app
+   - 架构特点: Monorepo（255 个 workspace 包）+ 插件化运行时（"一切皆插件"）+ 能力接缝（Service Definition / Provider / Consumer 三角）+ 双编译面（host / client）+ 多进程协议（JSON-RPC / ACP）
+   - 模块数量: `packages/` 下 50 个包组，255 个 workspace 包，9 个 vendored 包，2 个 app
    - 影响: **高**
 
 3. **依赖复杂度**
@@ -49,7 +50,7 @@ verified_at: 2026-08-18
 ### 复杂度因子计算
 
 ```
-基础级别 = 超大型 (3 级)  [7,238 文件 > 500]
+基础级别 = 超大型 (3 级)  [9,072 文件 > 500]
 + Monorepo (+1)
 + 混合语言 (+0.5)  [TypeScript / TSX / Python / YAML / 原生]
 = 4.5 级 → 已封顶于超大型项目策略
@@ -67,8 +68,8 @@ verified_at: 2026-08-18
 ### 风险点
 
 - [x] **大文件**: 存在超过 800 行的源文件，需先取大纲再分段读取
-- [x] **复杂依赖**: 219 包依赖图需依赖生成产物 `docs/module-graph.md` 而非手工推断
-- [ ] **文档不足**: 不成立——仓库文档极其充分（1,390 篇 Agent Notes + 分层 `docs/`）
+- [x] **复杂依赖**: 255 包依赖图需依赖生成产物 `docs/module-graph.md` 而非手工推断
+- [ ] **文档不足**: 不成立——仓库文档极其充分（1,742 篇 Agent Notes + 分层 `docs/`）
 - [x] **特殊架构**: Cordis 时空可组合性范式、能力接缝、双编译面属于非常规架构
 - [x] **其他**: 仓库自带被 CI 强制的文档治理体系，`dev_docs/` 存在事实归属地重复风险（详见 [问题报告](./project_analysis_report.md) 🔴 问题 1）
 
@@ -175,44 +176,47 @@ verified_at: 2026-08-18
 **统计结果**:
 
 ```
-总文件数: 7,238 个；总目录数: 1,211 个；最大深度: 9
+总文件数: 9,072 个；总目录数: 1,477 个；最大深度: 9
 工作区包:
-├─ packages/<group>/<pkg>: 219 个
+├─ packages/<group>/<pkg>: 255 个
 ├─ vendor/*:                9 个
 └─ apps/*:                  2 个 (cli, web)
 
 代码行数:
-├─ TypeScript (.ts):  501,274 行
-├─ TSX (.tsx):         66,872 行
-├─ Markdown (.md):    170,752 行
-├─ JSON (.json):       42,657 行
-├─ YAML (.yml):         8,319 行
-└─ Python (.py):        4,373 行
+├─ TypeScript (.ts):  684,902 行
+├─ TSX (.tsx):         82,677 行
+├─ Markdown (.md):    255,250 行
+├─ JSON (.json):       62,065 行
+├─ YAML (.yml):         11,971 行
+└─ Python (.py):        8,718 行
 
 测试资产:
-├─ 测试目录: 224 个（`tests/` `test/` `__tests__/` `spec/` 等标准目录）
-├─ 测试目录下文件总数: 1739 个（含快照期望输出与夹具）
-└─ packages/ 下 *.spec.ts / *.test.ts 源文件: 643 个
+├─ 测试目录: 260 个（`tests/` `test/` `__tests__/` `spec/` 等标准目录）
+├─ 测试目录下文件总数: 1713 个（含快照期望输出与夹具）
+└─ packages/ 下 *.spec.ts / *.test.ts 源文件: 854 个
 
 决策记录:
-└─ .agents/notes/**/*.md: 1,390 篇
+└─ .agents/notes/**/*.md: 1,742 篇
 ```
 
 **验证命令**:
 
 ```bash
-python3 AI-Coding-Context/tools/py/project_scanner.py . --mode summary --exclude-standard
+# 2026-09-06 复核：AICC 框架未挂载于本机，project_scanner.py 不可用，改用等价 find 口径
+find . -path ./.git -prune -o -path "*/node_modules" -prune -o -type f -print | wc -l   # 9,072
+find . -path ./.git -prune -o -path "*/node_modules" -prune -o -type d -print | wc -l   # 1,477
 find packages -maxdepth 3 -name package.json -not -path "*/node_modules/*" | wc -l
 find vendor -maxdepth 2 -name package.json -not -path "*/node_modules/*" | wc -l
 find . -path ./node_modules -prune -o -path ./AI-Coding-Context -prune -o -path ./.git -prune -o -name "*.ts" -print | grep -v node_modules | xargs wc -l | tail -1
-find packages -name "*.spec.ts" -o -name "*.test.ts" | grep -v node_modules | wc -l   # 643
+find packages -name "*.spec.ts" -o -name "*.test.ts" | grep -v node_modules | wc -l   # 854
 find .agents/notes -name "*.md" | wc -l
 ```
 
 **⚠️ 人工验证点**:
 
-- 文件数 7,238 已排除框架目录 `AI-Coding-Context/`（符号链接）、`node_modules/`、`.git/`
+- 文件数 9,072 已排除 `node_modules/` 与 `.git/`；`AI-Coding-Context/` 在本机不存在，无需排除
 - `.ts` 行数含 `vendor/` 与 `scripts/`；正式文档中引用该数字时必须同时说明统计范围
+- 本轮统计口径与 2026-08-18 首次统计存在工具差异（`project_scanner.py` 不可用）。目录/文件总数为等价 find 口径，`packages/` 包数、行数、Agent Notes 数与测试拓扑均为同源命令复算，可直接比对
 
 ---
 
@@ -222,16 +226,16 @@ find .agents/notes -name "*.md" | wc -l
 
 ```
 deepseek-harness/
-├── packages/           - 219 个 workspace 包，按 49 个能力组划分（详见 packages/README.md）
+├── packages/           - 255 个 workspace 包，按 50 个能力组划分（详见 packages/README.md）
 ├── apps/               - 产品装配层：cli（`dsh` 命令）、web（Web 应用）
 ├── vendor/             - Cordis 生态固定源码副本（9 包），rescope 为 @deepseek-ai/*
 ├── native/             - landlock-run 原生启动器（Linux 进程约束）
 ├── python/             - Python SDK 与打包运行时（sdk、sdk-runtime）
 ├── docs/               - 仓库自有分层文档（双语），含生成产物目录
-├── examples/           - 可运行 cordis.yml 叶子示例
+├── snapshots/          - 会话驱动的快照期望输出
 ├── scripts/            - 仓库门禁与生成器（verify-* / gen-* / run-gates）
 ├── website/            - VitePress 文档站点
-├── .agents/            - Agent Notes（1,390 篇）与 Skills
+├── .agents/            - Agent Notes（1,742 篇）与 Skills
 └── dev_docs/           - 【本次新增】AICC 文档体系
 ```
 
@@ -247,7 +251,8 @@ deepseek-harness/
 | constraint | evidence | documentation_impact | ai_rules_impact | status |
 | --- | --- | --- | --- | --- |
 | 开发者预览期，明确声明会有破坏性变更 | `README.md`（Developer preview 章节） | 主文档、`deployment_guide.md` 必须标注稳定性预期 | 不得承诺 API 向后兼容 | confirmed |
-| 预发布阶段"foundation over blast radius"：无外部消费者，禁止兼容性垫片 | `AGENTS.md`（Pre-release stance 章节） | `architecture_overview.md`、`AI_RULES.md` | 重命名/重构时必须同步更新全部引用，后端拒绝旧磁盘格式 | confirmed |
+| 公开 API 处于 pre-stable：改动时必须更新每一个消费者，不加兼容垫片 | `AGENTS.md` 的 `## Pre-stable APIs and released Session data` 章节 | `architecture_overview.md`、`AI_RULES.md` | 重命名/重构时同步更新全部引用 | **已更正**（2026-09-06）：原引用的 `Pre-release stance` 章节与 "foundation over blast radius" 表述在当前 `AGENTS.md` 中**均不存在**（`grep` 无命中），系引用了已改写的旧版本 |
+| 已发布的 Session JSONL 是上一条的**例外**：走相邻迁移，已提交世代永不移动/覆盖/删除 | `AGENTS.md` 同章节 + [相邻迁移决策](../../.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md) | `session_and_events.md`、`AI_RULES.md` | 只能新增版本命名的后继物，不得改写既有世代；SQLite 域用单调递增的 `SCHEMA_VERSION` | confirmed（2026-09-06 新增，首次分析遗漏） |
 | "一切皆插件"，无特权内核 | `docs/architecture.md:11-13` | `architecture_overview.md`、`plugin_development_guide.md` | 新行为必须挂在文档化扩展点，改 `agent-loop` 需同步更新 `docs/architecture.md` | confirmed |
 | Model-visible ⟺ logged：任何进入模型请求的内容必须可从会话日志重建 | `docs/architecture.md:96`、`AGENTS.md` Conventions | `session_and_events.md`、`agent_loop_and_tools.md` | 新增模型可见输入必须同时新增会话事件 | confirmed |
 | 注册即效果：所有贡献通过 `ctx.effect()` / `ctx.on()`，registry 的 `register()` 返回 disposer | `AGENTS.md` Conventions | `plugin_development_guide.md`、`capability_seams.md` | 禁止不可撤销的全局注册 | confirmed |
@@ -406,7 +411,7 @@ deepseek-harness/
 
 ### 2.6 配置与组合模式
 
-- **来源**: `packages/bundle/base/cordis.patch.yml`、`examples/*/cordis.yml`
+- **来源**: `packages/bundle/base/cordis.patch.yml`、`snapshots/*/*/cordis.yml`（样例 cordis.yml 已随 `examples/` 移除而落位于 `snapshots/`）
 - **待提取**: cordis.yml 行结构、`!!js` 在 `config` 与 `disabled` 下的允许边界、profile 补丁层叠
 
 **验证方式（执行时逐条勾选）**:
@@ -459,7 +464,7 @@ deepseek-harness/
 ### 3.2 推荐子文档清单（🟡 P1，7 篇）
 
 - [ ] `monorepo_and_build.md` - Monorepo 结构与构建体系
-  - **推荐理由**: 219 包 + 双编译面 + vendored 依赖是本仓库最高频的认知门槛
+  - **推荐理由**: 255 包 + 双编译面 + vendored 依赖是本仓库最高频的认知门槛
   - **内容来源**: `pnpm-workspace.yaml`、`tsconfig.*.json`、`tsdown.config.ts`、`docs/development.md`、`docs/rescope.md`、`vendor/README.md`
   - **预计行数**: 350-450
 
@@ -498,7 +503,7 @@ deepseek-harness/
 - [ ] `cost_optimization.md` - Token 成本与上下文压缩
   - **内容来源**: `packages/llm/token-meter/`、`packages/compaction/`、`packages/spill/`、`docs/subsystems/compaction.md`
 - [ ] `evaluation_metrics.md` - 评测与基准
-  - **内容来源**: `BENCHMARK.md`、`vitest.snapshot.config.ts`、`examples/*/tests/snapshots/`
+  - **内容来源**: `BENCHMARK.md`、`vitest.snapshot.config.ts`、`snapshots/`（见 `snapshots/AGENTS.md`）
 - [ ] `troubleshooting.md` - 常见故障排查
   - **内容来源**: `docs/postmortem/`、`docs/defensive-patterns.md`、`packages/runtime-diagnostics/`
 
@@ -511,7 +516,7 @@ deepseek-harness/
 | 自托管/部署运维 | `scripts/release/`、`python/sdk-runtime/`、`package.json` `release:*` | 打包、发布、运行时分发 | 单独文档 `deployment_guide.md` |
 | 外部 API/数据授权 | `packages/llm/`、`packages/web/`、`packages/session/session-telemetry-otel/`、`packages/e2b/` | Provider、授权、上传数据与匿名 id 边界 | 单独文档 `security_and_sandbox.md` |
 | 原生代码与平台约束 | `native/landlock-run/`、`packages/sandbox/sandbox-windows-acl/`、`package.json` `check:ci:windows-*` | 平台差异与原生构建 | 合并到 `security_and_sandbox.md`（约束）+ `monorepo_and_build.md`（构建） |
-| 决策记录体系 | `.agents/notes/README.md`（1,390 篇） | AI 修改代码时的决策查阅与撰写义务 | 合并到 `quality_gates.md` + `AI_RULES.md` |
+| 决策记录体系 | `.agents/notes/README.md`（1,742 篇） | AI 修改代码时的决策查阅与撰写义务 | 合并到 `quality_gates.md` + `AI_RULES.md` |
 
 ---
 
@@ -664,14 +669,15 @@ deepseek-harness/
 
 | 编号 | 事实 | 证据等级 | 来源文件 | 验证方式 | 当前结论 |
 | --- | ---- | -------- | -------- | -------- | -------- |
-| F1 | 项目共 7,238 文件 / 1,211 目录，complexity_level=advanced | E4 | — | `project_scanner.py --mode summary --exclude-standard` | 已确认 |
-| F2 | `packages/` 下 219 个 workspace 包 | E4 | `packages/` | `find` + `wc -l` 统计 `packages/` 下 package.json | 已确认 |
-| F3 | TypeScript 501,274 行 / TSX 66,872 行 / Markdown 170,752 行 | E4 | 全仓 | `find` + `xargs wc -l` 汇总行数 | 已确认（含 vendor 与 scripts） |
-| F4 | 224 个测试目录、1739 个测试文件（测试目录下全部文件，含快照与夹具）；其中 `packages/` 下 `*.spec.ts`/`*.test.ts` 为 643 个 | E4 | 全仓测试目录 | `semantic_review_checker.scan_test_topology()` + `find` 复核 | 已确认 |
-| F5 | Agent Notes 1,390 篇 | E4 | `.agents/notes/` | `find` + `wc -l` 统计 `.agents/notes/` 下 Markdown | 已确认 |
+| F1 | 项目共 9,072 文件 / 1,477 目录，complexity_level=advanced | E4 | — | `project_scanner.py --mode summary --exclude-standard` | 已确认 |
+| F2 | `packages/` 下 255 个 workspace 包 | E4 | `packages/` | `find` + `wc -l` 统计 `packages/` 下 package.json | 已确认 |
+| F3 | TypeScript 684,902 行 / TSX 82,677 行 / Markdown 255,250 行 | E4 | 全仓 | `find` + `xargs wc -l` 汇总行数 | 已确认（含 vendor 与 scripts） |
+| F4 | 260 个测试目录、1713 个测试文件（测试目录下全部文件，含快照与夹具）；其中 `packages/` 下 `*.spec.ts`/`*.test.ts` 为 854 个 | E4 | 全仓测试目录 | `semantic_review_checker.scan_test_topology()` + `find` 复核 | 已确认 |
+| F5 | Agent Notes 1,742 篇 | E4 | `.agents/notes/` | `find` + `wc -l` 统计 `.agents/notes/` 下 Markdown | 已确认 |
 | F6 | pnpm@11.7.0，Node 引擎范围为 `^22.19.0` 或 `>=24.0.0`，TypeScript `^6.0.3`，Vitest `^4.1.8` | E2 | `package.json` | 读取 | 已确认 |
-| F7 | workspace 成员含 `vendor/*`、`packages/*/*`、`native/landlock-run`、`apps/*`、`website`、`examples`、`python/sdk-runtime` | E2 | `pnpm-workspace.yaml` | 读取 | 已确认 |
+| F7 | workspace 成员为 `vendor/*`、`packages/*/*`、`native/landlock-run`、`native/landlock-run/packages/*`、`apps/*`、`website`、`python/sdk-runtime` | E2 | `pnpm-workspace.yaml` | 读取 | **已更正**（2026-09-06）：`examples` 已不是 workspace 成员，根目录 `examples/` 与 `packages/examples/` 均已不存在；新增 `native/landlock-run/packages/*` |
 | F8 | Cordis 为 vendored 源码副本（9 包），`@deepseek-ai/cosmokit`/`schemastery` 通过 `overrides` link 到 vendor | E2 | `pnpm-workspace.yaml`、`vendor/` | 读取 + `ls` | 已确认 |
+| F28 | vendored 包**不是** `private: true` | E4 | `vendor/*/package.json` | 解析 9 个 `package.json`：`private` 字段全部缺失，`publishConfig.access` 全部为 `public` | **已确认，且与上游文档冲突**：`AGENTS.md:103` 写"vendored packages are rescoped and `private: true`"，`vendor/README.md` 的本地改动清单也提到 added `private: true`。二者与仓库实际不符，疑为陈旧表述。`dev_docs` 一律以 `vendor/*/package.json` 实际内容为准，并显式标注该冲突 |
 | F9 | 一切皆插件、无特权内核；模型适配器/工具注册表/会话日志/Agent 循环本身均为插件 | E2 | `docs/architecture.md:11-13` | 读取 | 已确认 |
 | F10 | 模型可见即已记录，由运行时不变量断言 | E2 | `docs/architecture.md:96` | 读取 | 已确认 |
 | F11 | 瀑布监听器必须调用 `next()`，否则短路 | E2 | `docs/architecture.md:84` | 读取 | 已确认 |
@@ -683,34 +689,39 @@ deepseek-harness/
 | F17 | OTel 遥测存在上传模式，资源标识含匿名 `user.id`（`$DSH_HOME/.anonymous-user-id`，删除即重置） | E2 | `packages/session/session-telemetry-otel/README.md:5` | 读取 | 已确认 |
 | F18 | 覆盖率门禁为 `test:coverage`（`packages/*/*/src` 每文件 100%），非 `test` | E2 | `package.json` scripts、`AGENTS.md` Commands、`docs/testing.md` | 读取 | 已确认 |
 | F19 | host / client 双编译面因两侧在相同 ctx key 上合并不同服务而拆分 | E2 | `tsconfig.host.json:2-4`、`tsconfig.client.json:2-6` | 读取 | 已确认 |
-| F20 | `node_modules/` 不存在，仓库门禁当前不可运行 | E4 | 仓库根 | `test -d node_modules` → 失败 | 已确认 |
-| F21 | `AI-Coding-Context` 符号链接未被 gitignore | E4 | `.gitignore` | `git check-ignore -v AI-Coding-Context` → exit 1 | 已确认 |
-| F22 | 环境：macOS 26.6 (Darwin 25.6.0)、Python 3.9.6、Node v24.13.0 | E4 | — | `env_diagnosis.py` | 已确认 |
+| F20 | `pnpm install` 已完成，仓库门禁可运行 | E4 | 仓库根 | `pnpm install` → exit 0；`test -d node_modules` → 成功 | 已确认（2026-09-06 复核，取代首次统计时的"不可运行"结论） |
+| F21 | `AI-Coding-Context` 已被 gitignore；该符号链接在本机不存在 | E4 | `.gitignore:46` | `grep -n AI-Coding-Context .gitignore` → 命中；`ls -ld AI-Coding-Context` → No such file | 已确认（问题 2 已闭环） |
+| F22 | 环境：macOS 26.5.1 (Darwin 25.5.0)、Python 3.14.6、Node v26.3.1、pnpm 11.7.0 | E4 | — | `sw_vers` / `uname -r` / `python3 --version` / `node --version` / `pnpm --version` | 已确认 |
+| F23 | `verify-md-links`（2273 文件）、`verify-translation-pairing`（1135 配对）、`verify-doc-budgets`（8 篇）在含 `dev_docs/_analysis/` 的工作树上全部通过 | E4 | `scripts/verify-*.ts` | 三条 `pnpm run verify-*` 均 exit 0 | 已确认：`dev_docs/*.md`（非 README）不进入这三个门禁的作用域 |
+| F24 | `dev_docs/**/README.md` 确实触发双语配对门禁失败 | E4 | `scripts/translation-pairing.ts` | 建 `dev_docs/plans/README.md` 探针后 `pnpm run verify-translation-pairing` → exit 1，报 `in-scope documentation must merge bilingual`；探针已删除 | 已确认（首次统计时为 E3 推断，本轮实证升级为 E4） |
+| F25 | AICC 框架工具链在本机不可用 | E4 | — | `ls -ld AI-Coding-Context` → No such file；框架为指向仓库外路径的符号链接，未纳入 Git | 已确认：`summary_validator` / `doc_health_checker` / `semantic_review_checker` 本轮无法运行 |
+| F26 | `docs/` 已是全量双语，每篇英文源都有 `.zh.md` 与 `.i18n.yaml` 配对 | E4 | `docs/` | `ls -1 docs`、`ls -1 docs/subsystems`；`verify-translation-pairing` 报 1135 组配对一致 | 已确认：`dev_docs` 的价值不在"提供中文"，而在面向 AI 的导航层与流程层 |
+| F27 | `packages/` 现有 50 个能力组、255 个 workspace 包 | E4 | `packages/` | `ls -1 packages`（含 5 个非目录文件）+ `find` 计数 | 已确认 |
 
 ### 量化声明来源
 
 | 声明 | 数值 | 来源命令/文件 | 记录位置 |
 | ---- | ---- | ------------- | -------- |
-| 总文件数 | 7,238 | `project_scanner.py --mode summary --exclude-standard` | 本文档 1.2 节 / F1 |
-| 总目录数 | 1,211 | 同上 | 1.2 节 / F1 |
-| workspace 包数 | 219 | `find` + `wc -l` 统计 `packages/` 下 package.json | 1.2 节 / F2 |
+| 总文件数 | 9,072 | `project_scanner.py --mode summary --exclude-standard` | 本文档 1.2 节 / F1 |
+| 总目录数 | 1,477 | 同上 | 1.2 节 / F1 |
+| workspace 包数 | 255 | `find` + `wc -l` 统计 `packages/` 下 package.json | 1.2 节 / F2 |
 | vendored 包数 | 9 | `find` + `wc -l` 统计 `vendor/` 下 package.json | 1.2 节 |
-| TypeScript 行数 | 501,274 | `find` + `xargs wc -l` 汇总 `*.ts` 行数 | 1.2 节 / F3 |
-| TSX 行数 | 66,872 | 同上（`*.tsx`） | 1.2 节 / F3 |
-| Markdown 行数 | 170,752 | 同上（`*.md`） | 1.2 节 / F3 |
-| Python 行数 | 4,373 | 同上（`*.py`） | 1.2 节 |
-| 测试目录数 | 224 | `semantic_review_checker --check-test-topology` | 1.2 节 / F4 |
-| 测试文件数 | 1739 | 同上（测试目录下全部文件） | 1.2 节 / F4 |
-| `packages/` 下 spec/test 源文件数 | 643 | `find packages` 按 `*.spec.ts` / `*.test.ts` 计数 | 1.2 节 / F4 |
-| Agent Notes 数 | 1,390 | `find` + `wc -l` 统计 `.agents/notes/` 下 Markdown | 1.2 节 / F5 |
+| TypeScript 行数 | 684,902 | `find` + `xargs wc -l` 汇总 `*.ts` 行数 | 1.2 节 / F3 |
+| TSX 行数 | 82,677 | 同上（`*.tsx`） | 1.2 节 / F3 |
+| Markdown 行数 | 255,250 | 同上（`*.md`） | 1.2 节 / F3 |
+| Python 行数 | 8,718 | 同上（`*.py`） | 1.2 节 |
+| 测试目录数 | 260 | `semantic_review_checker --check-test-topology` | 1.2 节 / F4 |
+| 测试文件数 | 1713 | 同上（测试目录下全部文件） | 1.2 节 / F4 |
+| `packages/` 下 spec/test 源文件数 | 854 | `find packages` 按 `*.spec.ts` / `*.test.ts` 计数 | 1.2 节 / F4 |
+| Agent Notes 数 | 1,742 | `find` + `wc -l` 统计 `.agents/notes/` 下 Markdown | 1.2 节 / F5 |
 | 计划产物数 | 22 | 本方案 3.1-3.3 节 + 批次计划 | 执行计划章节 |
 
 > **回写规则**: 上述任一数值变化时，必须全文检索旧值与同义表述（如"约 50 万行"、"两百余包"）并同步更新 `project_analysis_report.md` 与 `generation_progress.md`。
 
 ### 测试资产扫描结果
 
-- **扫描范围**: `packages/*/*/tests/`、`apps/*/tests/`、`examples/**/tests/`、`python/**`
-- **发现结果**: 650 个 `*.spec.ts` / `*.test.ts`；另有独立的快照测试配置（`vitest.snapshot.config.ts`）、e2e 配置（`vitest.e2e.config.ts`）、Web 与压力测试配置（`vitest.web*.config.ts`）；`examples/*/tests/snapshots/` 下存在样例工程快照期望输出；`pytest.ini` 表明存在 Python 测试
+- **扫描范围**: `packages/*/*/tests/`、`apps/*/tests/`、`snapshots/**`、`python/**`
+- **发现结果**: `packages/` 下 854 个 `*.spec.ts` / `*.test.ts`；另有独立的快照测试配置（`vitest.snapshot.config.ts`）、e2e 配置（`vitest.e2e.config.ts`）、Web 与压力测试配置（`vitest.web*.config.ts`）；`snapshots/` 下按 acp / sdk / session / web 四类存放会话驱动的快照期望输出（`snapshots/AGENTS.md` 为其归属地）；`pytest.ini` 表明存在 Python 测试
 - **已纳入 testing_guide / 主文档**: 是（`testing_guide.md` 为 P1 必生成项；四层测试拓扑写入主文档"常见任务速查"）
 - **完整拓扑清单**: 见本文档[附录 A：测试目录拓扑清单](#-附录-a测试目录拓扑清单生成产物)
 
@@ -747,9 +758,11 @@ pnpm run verify-doc-budgets
 ### 审核与确认留痕
 
 - **方案生成完成时间**: 2026-08-18 15:16
-- **等待人工审核状态**: 待审核
-- **用户确认时间**: 未确认
-- **进入正式生成时间**: 未开始
+- **统计数复核与回写时间**: 2026-09-06
+- **等待人工审核状态**: 已完成
+- **用户确认时间**: 2026-09-06，用户回复"方案审核通过"
+- **用户裁定内容**: ① `fact_conflicts` 采用选项 A 结构化豁免；② 疑问 1-4 采用各自"当前保守结论"；③ 警告 1 修复走方案 (b)（批次 6 前置，另见新增方案 (c)）
+- **进入正式生成时间**: 2026-09-06
 
 ### 复查回写要求
 
@@ -768,10 +781,10 @@ pnpm run verify-doc-budgets
 - [x] 待用户确认项仅包含代码、配置、锁文件、README、现有项目文档无法回答的问题
 - [x] 每个待用户确认项均含 `当前保守结论`、`已检查证据`、`为什么代码或仓库文档无法回答`、`blocks_phase1`、`回写目标`
 - [x] `CONTRIBUTING.md`、`AGENTS.md`、`docs/AGENTS.md`、pre-push skill 等治理约束已纳入建议边界，质量建议与其不冲突
-- [x] 风险与注意事项均有证据来源；风险 2 明确标注为 E3（未运行时验证）
-- [x] 质量保证措施与真实技术栈匹配，并写明 `node_modules` 缺失时的替代复核说明
+- [x] 风险与注意事项均有证据来源；风险 2 已由 E3 推断升级为 E4 实证（F24）
+- [x] 质量保证措施与真实技术栈匹配；`pnpm install` 已完成，仓库侧门禁已取得 E4 结果（F23）
 - [x] 复查结果已同步回写三件套
-- [x] 下一步动作保持为"建议通过，等待用户确认"
+- [x] 方案已获用户审核通过并授权正式生成（见"审核与确认留痕"）；`generation_progress.md` 的 verdict 已同步改写，两份文档状态一致
 
 ---
 
@@ -837,23 +850,23 @@ pnpm run verify-doc-budgets
 
 ### 数据准确性审核
 
-- [ ] 项目规模数据已验证（7,238 文件 / 219 包 / 501,274 行 TS）
-- [ ] 目录结构描述准确
-- [ ] 业务模块（包组）划分合理
-- [ ] 架构特点识别准确，无臆测
+- [x] 项目规模数据已验证（9,072 文件 / 255 包 / 684,902 行 TS）——2026-09-06 全量复算并回写
+- [x] 目录结构描述准确
+- [x] 业务模块（包组）划分合理
+- [x] 架构特点识别准确，无臆测
 
 ### 文档规划审核
 
-- [ ] 17 篇子文档清单合理，无冗余无遗漏
-- [ ] 排除 `rag_architecture.md` / `vector_database.md` 的理由成立
-- [ ] 主文档章节规划完整
-- [ ] 12 个场景导航覆盖常见需求
+- [x] 17 篇子文档清单合理，无冗余无遗漏
+- [x] 排除 `rag_architecture.md` / `vector_database.md` 的理由成立
+- [x] 主文档章节规划完整
+- [x] 12 个场景导航覆盖常见需求
 
 ### 风险评估
 
-- [ ] 事实归属地重复风险的缓解措施可接受
-- [ ] 双语配对门禁修复路径已选定
-- [ ] 4 个待确认项已逐条答复
+- [x] 事实归属地重复风险的缓解措施可接受（用户已接受该风险）
+- [x] 双语配对门禁修复路径已选定（方案 (b)；批次 6 前可改选新增的方案 (c)）
+- [x] 4 个待确认项已逐条答复（采用各自"当前保守结论"）
 
 ---
 
@@ -861,22 +874,71 @@ pnpm run verify-doc-budgets
 
 ### 需要修改的部分
 
-1. [待填写]
+1. 全部统计数需按 2026-09-06 实测值回写（仓库自 2026-08-18 起显著增长）——**已完成**，详见下方"复核记录"。
+2. `generation_plan.md` 的复查清单与 `generation_progress.md` 的 `phase1_review_verdict` 状态互相矛盾——**已完成**，两处已统一为"已授权"。
 
 ### 需要补充的内容
 
-1. [待填写]
+1. 警告 1 的 E4 实证结果（F24）——**已补充**。
+2. AICC 工具链在本机不可用这一事实及其对批次 7 验收的影响（F25）——**已补充**，验收方案见"复核记录"。
+3. `docs/` 已全量双语这一事实对 `dev_docs` 定位的影响（F26）——**已补充**。
 
 ### 批准意见
 
-- [ ] **批准，可以开始生成文档**
+- [x] **批准，可以开始生成文档**
 - [ ] **需要修改后重新提交方案**
 - [ ] **拒绝，原因如下**: [说明]
 
 ---
 
-**签名**: [待签名]
-**审核日期**: [待填写]
+**签名**: 用户（2026-09-06 回复"方案审核通过"）
+**审核日期**: 2026-09-06
+
+---
+
+## 🔄 复核记录（2026-09-06）
+
+本仓库在方案创建（2026-08-18）与授权生成（2026-09-06）之间发生显著变化。按"量化声明来源"表的回写规则，全部数值已全文检索并同步更新，`project_analysis_report.md` 与 `generation_progress.md` 一并回写。
+
+| 指标 | 2026-08-18 | 2026-09-06 | 变化 |
+| ---- | ---------: | ---------: | ---- |
+| 总文件数 | 7,238 | 9,072 | +25.3% |
+| 总目录数 | 1,211 | 1,477 | +22.0% |
+| workspace 包数 | 219 | 255 | +36 |
+| 包组数 | 49 | 50 | +1 |
+| TypeScript 行数 | 501,274 | 684,902 | +36.6% |
+| TSX 行数 | 66,872 | 82,677 | +23.6% |
+| Markdown 行数 | 170,752 | 255,250 | +49.5% |
+| Python 行数 | 4,373 | 8,718 | +99.4% |
+| Agent Notes 篇数 | 1,390 | 1,742 | +352 |
+| `packages/` 下 spec/test 源文件 | 643 | 854 | +211 |
+| 测试目录数 | 224 | 260 | +36 |
+| 测试目录下文件数 | 1,739 | 1,713 | −26 |
+
+复杂度评级不变（仍为超大型封顶），子文档清单与批次划分不变。
+
+### 本轮新增的事实与其文档影响
+
+1. **上游 `docs/architecture.md` 已演进**（F26 同源观察）。首次分析时记录的回合流程、会话日志描述已不完整：当前架构文档新增 `agent/assistant-stream` 三帧协议、`assistant/attempt` 语义、会话投影接缝（`ctx.sessionProjections`）、已发布会话格式的相邻迁移链、`ctx.webhookRuntime`、Agent Teams、`ctx.goals` 与 `ctx.jobs`，且 profile 增加 `sdk`、`sdk-minimal`、`acp`。**影响**：`architecture_overview.md`、`session_and_events.md`、`agent_loop_and_tools.md` 必须以当前 `docs/architecture.md` 为准撰写，不得沿用本方案 1.5 节的旧表述。
+2. **`docs/` 已全量双语**（F26）。`dev_docs` 不得以"提供中文文档"作为存在理由；其价值定位收敛为：面向 AI 的**导航层**（场景→文档→事实源的三级跳转）与**流程层**（`plans/` `memos/` `knowledge/`）。**影响**：全部子文档的开篇定位声明。
+3. **AICC 工具链不可用**（F25）。批次 7 的 `doc_health_checker` / `semantic_review_checker` 双实现交叉验证**无法执行**。**替代验收方案**：① 用仓库自有门禁 `verify-md-links` 覆盖全部跨文档链接与锚点（该门禁已证明可覆盖 `dev_docs`，见下）；② 人工执行方案"质量检查清单"四组；③ 在 `health_check_report.md` 中如实标注 AICC 检查为 `NOT_RUN`（工具缺失），不得伪造检查结果。
+4. **仓库侧门禁作用域已实证**（F23/F24）。`dev_docs/*.md`（非 README）不进入 `verify-md-links` / `verify-translation-pairing` / `verify-doc-budgets`；但 `dev_docs/**/README.md` 会进入配对门禁。
+
+> **关于 `verify-md-links` 的作用域**：F12 记录其 `PATTERNS` 不含 `dev_docs/`，本轮已复读 `scripts/verify-md-links.ts:19-29` 确认（`PATTERNS` 为 `README.md`、`README.zh.md`、`.agents/notes/**/*.md`、`docs/**/*.md`、`packages/*/*.md`、`packages/*/*/*.md`、`AGENTS.md`、`packages/AGENTS.md`、`.agents/skills/**/*.md`）。F23 的"2273 文件全部通过"**不包含** `dev_docs`。
+>
+> **`dev_docs` 链接验收办法（批次 7 执行）**：在工作树中临时向 `PATTERNS` 追加 `'dev_docs/**/*.md'`，运行 `pnpm run verify-md-links`，记录结果后 `git checkout -- scripts/verify-md-links.ts` 还原。该改动**不得提交**——它只是借用仓库自有检查器验证 `dev_docs` 内部链接与锚点，不改变仓库门禁的既定作用域。
+
+### 警告 1 的新增修复方案 (c)
+
+F24 实证后出现了一个比 (a)/(b) 都更轻的选项：**不在 `dev_docs` 下使用 `README.md` 这一文件名**。配对门禁的 `README_ARTIFACT` 正则只匹配 `readme`，改用 `index.md` 或 `_index.md` 即完全绕开，**无需改动仓库门禁脚本，也无需 Agent Note**。
+
+| 方案 | 改动面 | 需要 Agent Note | 对未来新增 README 的覆盖 |
+| ---- | ------ | --------------- | ------------------------ |
+| (a) 清单豁免 | `translation-pairing.manifest.json` | 是 | 否，每个新文件都要加 |
+| (b) 作用域排除 | `scripts/translation-pairing.ts` | 是 | 是 |
+| **(c) 改用 `index.md`** | 仅 `dev_docs/` 内部 | 否 | 是 |
+
+方案 (c) 的代价是偏离 AICC 标准目录约定。由于 AICC 检查工具在本机不可用，该偏离当前无法被检出，实际成本为零。**待用户在批次 6 开始前裁定**；在此之前批次 1-5 不受影响。
 
 ---
 
@@ -887,7 +949,7 @@ pnpm run verify-doc-budgets
 | `dev_docs` 与 `docs/` 事实漂移 | 高 | 高 | 每篇标注上游事实源；生成产物只链接不复制；走路径 C 增量更新 |
 | `README.md` 触发双语配对门禁 | 高 | 中 | 批次 6 前修改 `scripts/translation-pairing.ts` 并附 Agent Note |
 | 文件过大无法一次读取 | 高 | 中 | 先取大纲再分段读取，优先关键函数与配置 |
-| 219 包依赖关系难以理清 | 中 | 高 | 直接引用 `docs/module-graph.md` 生成产物 |
+| 255 包依赖关系难以理清 | 中 | 高 | 直接引用 `docs/module-graph.md` 生成产物 |
 | AI token 限制导致会话中断 | 高 | 低 | 每批设检查点，`generation_progress.md` 逐产物记录 |
 | 时间不足无法完成全部文档 | 中 | 中 | 优先完成 P0 七篇，P1/P2 后续补充 |
 | 引用的 `docs/` 行号因上游变更而失效 | 中 | 中 | 引用锚点优先用小节标题而非行号；`verified_at` 逐篇记录 |
@@ -945,129 +1007,153 @@ pnpm run verify-doc-budgets
 
 ## 📎 附录 A：测试目录拓扑清单（生成产物）
 
-共 224 个测试目录，目录下文件合计 1739 个（含快照期望输出与夹具，非仅测试源文件）。
+共 260 个测试目录，目录下文件合计 1713 个（含快照期望输出与夹具，非仅测试源文件）。
 
 本清单用于让 `semantic_review_checker --check-test-topology` 可验证测试资产覆盖度，并作为 `testing_guide.md` 的编写依据。
 
 **再生成命令**（清单过期时重跑并整体替换本节表格）:
 
 ```bash
-python3 AI-Coding-Context/tools/py/semantic_review_checker.py --check-test-topology --doc-dir dev_docs --repo-root .
+# AICC 工具不可用时的等价口径（2026-09-06 本表即由此生成）
+find . -path ./node_modules -prune -o -path ./.git -prune -o -type d \
+  \( -name tests -o -name test -o -name __tests__ -o -name spec \) -print \
+  | grep -v node_modules | sort \
+  | while read -r d; do printf '| `%s/` | %s |\n' "${d#./}" "$(find "$d" -type f | wc -l | tr -d ' ')"; done
 ```
 
 | 测试目录 | 目录下文件数 |
 | -------- | -----------: |
-| `apps/cli/tests/` | 17 |
-| `apps/web/tests/` | 220 |
-| `examples/acp-agent/tests/` | 395 |
-| `examples/headless-agent/tests/` | 84 |
-| `examples/jsonrpc-agent/tests/` | 20 |
+| `apps/cli/tests/` | 118 |
+| `apps/cli/tests/profiles/acp/tests/` | 21 |
+| `apps/cli/tests/profiles/headless/tests/` | 58 |
+| `apps/web/tests/` | 175 |
 | `native/landlock-run/test/` | 2 |
-| `packages/acp/acp/tests/` | 9 |
-| `packages/api/gateway/tests/` | 2 |
+| `packages/acp/acp/tests/` | 12 |
+| `packages/api/gateway/tests/` | 9 |
 | `packages/api/remotes/tests/` | 2 |
-| `packages/attachment/attachment-local/tests/` | 3 |
-| `packages/attachment/attachment/tests/` | 1 |
-| `packages/boot/app-boot/tests/` | 6 |
+| `packages/api/session-controller/tests/` | 39 |
+| `packages/api/settings-controller/tests/` | 2 |
+| `packages/api/workspace-controller/tests/` | 4 |
+| `packages/attachment/attachment-local/tests/` | 9 |
+| `packages/attachment/attachment/tests/` | 3 |
+| `packages/boot/app-boot/tests/` | 7 |
 | `packages/boot/cmdline/tests/` | 1 |
+| `packages/bundle/acp-app/tests/` | 2 |
 | `packages/bundle/base/tests/` | 2 |
 | `packages/bundle/headless/tests/` | 2 |
-| `packages/bundle/web-app/tests/` | 3 |
-| `packages/client/connection/tests/` | 11 |
-| `packages/client/hmr/tests/` | 1 |
+| `packages/bundle/sdk-app/tests/` | 2 |
+| `packages/bundle/sdk-minimal/tests/` | 1 |
+| `packages/bundle/web-app/tests/` | 4 |
+| `packages/client/connection/tests/` | 15 |
+| `packages/client/file-upload/tests/` | 2 |
+| `packages/client/hmr/tests/` | 2 |
 | `packages/client/locale/tests/` | 6 |
 | `packages/client/modules/tests/` | 2 |
-| `packages/client/runtime/tests/` | 25 |
-| `packages/client/schema-form/tests/` | 2 |
-| `packages/client/ui-agent-preset/tests/` | 7 |
-| `packages/client/ui-attachment/tests/` | 5 |
+| `packages/client/store/tests/` | 1 |
+| `packages/client/ui-agent-preset/tests/` | 6 |
+| `packages/client/ui-approval/tests/` | 1 |
+| `packages/client/ui-attachment/tests/` | 6 |
+| `packages/client/ui-brand-official/tests/` | 1 |
+| `packages/client/ui-chat/tests/` | 29 |
 | `packages/client/ui-commands/tests/` | 5 |
-| `packages/client/ui-conversation/tests/` | 29 |
+| `packages/client/ui-conversation/tests/` | 31 |
 | `packages/client/ui-deliverables/tests/` | 2 |
 | `packages/client/ui-directory-picker-browse/tests/` | 2 |
 | `packages/client/ui-directory-picker-native/tests/` | 1 |
-| `packages/client/ui-goal/tests/` | 3 |
+| `packages/client/ui-goal/tests/` | 4 |
 | `packages/client/ui-input-trigger/tests/` | 5 |
 | `packages/client/ui-jobs/tests/` | 2 |
-| `packages/client/ui-layout/tests/` | 6 |
-| `packages/client/ui-message-feedback/tests/` | 3 |
-| `packages/client/ui-model-selection/tests/` | 2 |
+| `packages/client/ui-layout/tests/` | 7 |
+| `packages/client/ui-message-feedback/tests/` | 4 |
+| `packages/client/ui-model-selection/tests/` | 3 |
 | `packages/client/ui-permission-presets/tests/` | 3 |
 | `packages/client/ui-plan/tests/` | 2 |
-| `packages/client/ui-primitives/tests/` | 67 |
-| `packages/client/ui-settings-general/tests/` | 7 |
+| `packages/client/ui-primitives/tests/` | 81 |
+| `packages/client/ui-reference/tests/` | 1 |
+| `packages/client/ui-renderer/tests/` | 10 |
+| `packages/client/ui-schedule/tests/` | 2 |
+| `packages/client/ui-session/tests/` | 1 |
+| `packages/client/ui-settings-general/tests/` | 6 |
 | `packages/client/ui-settings-models/tests/` | 10 |
-| `packages/client/ui-settings-plugin-inventory/tests/` | 3 |
-| `packages/client/ui-settings-plugins/tests/` | 5 |
-| `packages/client/ui-settings/tests/` | 3 |
-| `packages/client/ui-sidebar/tests/` | 8 |
+| `packages/client/ui-settings-plugin-inventory/tests/` | 2 |
+| `packages/client/ui-settings-plugins/tests/` | 4 |
+| `packages/client/ui-settings/tests/` | 4 |
+| `packages/client/ui-sidebar/tests/` | 7 |
 | `packages/client/ui-skill/tests/` | 2 |
-| `packages/client/ui-slots/tests/` | 4 |
-| `packages/client/ui-subagent/tests/` | 2 |
-| `packages/client/ui-theme/tests/` | 8 |
-| `packages/client/ui-tool/tests/` | 16 |
-| `packages/client/ui-trajectory/tests/` | 8 |
-| `packages/client/ui-user-questions/tests/` | 4 |
-| `packages/client/ui-workflow-run/tests/` | 1 |
-| `packages/client/ui-workspace/tests/` | 8 |
-| `packages/client/web-react/tests/` | 7 |
-| `packages/client/web/tests/` | 5 |
+| `packages/client/ui-slots/tests/` | 3 |
+| `packages/client/ui-subagent/tests/` | 3 |
+| `packages/client/ui-theme/tests/` | 12 |
+| `packages/client/ui-tool/tests/` | 17 |
+| `packages/client/ui-trajectory/tests/` | 10 |
+| `packages/client/ui-user-questions/tests/` | 5 |
+| `packages/client/ui-workflow-run/tests/` | 2 |
+| `packages/client/ui-workspace/tests/` | 10 |
+| `packages/client/web/tests/` | 3 |
 | `packages/code-runtime/code-runtime-worker-thread/tests/` | 6 |
 | `packages/code-runtime/code-runtime/tests/` | 2 |
-| `packages/compaction/command-compact/tests/` | 3 |
+| `packages/compaction/command-compact/tests/` | 2 |
 | `packages/compaction/compaction-basic/tests/` | 4 |
 | `packages/compaction/compaction-tool-result-pruner/tests/` | 2 |
 | `packages/compaction/compaction/tests/` | 3 |
 | `packages/context/agent-instructions/tests/` | 2 |
+| `packages/context/file-reference-local/tests/` | 2 |
+| `packages/context/file-reference/tests/` | 1 |
 | `packages/context/session-reference/tests/` | 1 |
-| `packages/context/time-context/tests/` | 4 |
+| `packages/context/time-context/tests/` | 7 |
 | `packages/context/tmux-context/tests/` | 1 |
 | `packages/core/agent-default-model/tests/` | 1 |
-| `packages/core/agent-loop/tests/` | 20 |
+| `packages/core/agent-loop/tests/` | 21 |
 | `packages/core/agent-tool-presentation/tests/` | 1 |
 | `packages/core/agent/tests/` | 6 |
 | `packages/core/scope/tests/` | 3 |
-| `packages/core/session/tests/` | 13 |
+| `packages/core/session/tests/` | 14 |
 | `packages/core/system-prompt/tests/` | 4 |
 | `packages/core/tools/tests/` | 12 |
-| `packages/credentials/credentials-local/tests/` | 4 |
+| `packages/credentials/authorization/tests/` | 3 |
+| `packages/credentials/credentials-local/tests/` | 6 |
 | `packages/credentials/credentials/tests/` | 3 |
-| `packages/e2b/e2b/tests/` | 2 |
+| `packages/e2b/e2b/tests/` | 6 |
 | `packages/e2b/fs-e2b/tests/` | 1 |
 | `packages/e2b/subprocess-e2b/tests/` | 2 |
-| `packages/examples/acp-demo/tests/` | 3 |
-| `packages/examples/agent-spine-demo/tests/` | 3 |
-| `packages/extensions/cordis-client-runner/tests/` | 5 |
+| `packages/experimental/agent-team-profile/tests/` | 1 |
+| `packages/experimental/agent-team-web-profile/tests/` | 1 |
+| `packages/experimental/agent-team/tests/` | 6 |
+| `packages/experimental/client-ui-agent-team/tests/` | 2 |
+| `packages/experimental/code-runtime-python/tests/` | 5 |
+| `packages/experimental/inspector/tests/` | 26 |
+| `packages/experimental/tool-agent-team/tests/` | 1 |
+| `packages/experimental/webworker-packer/tests/` | 1 |
+| `packages/experimental/webworker-runtime/tests/` | 44 |
+| `packages/extensions/cordis-client-runner/tests/` | 6 |
 | `packages/extensions/cordis-host-runner/tests/` | 6 |
 | `packages/extensions/tool-cordis/tests/` | 1 |
 | `packages/extensions/ui-cordis/tests/` | 3 |
 | `packages/feedback/command-feedback/tests/` | 2 |
-| `packages/feedback/message-feedback/tests/` | 4 |
+| `packages/feedback/message-feedback/tests/` | 3 |
 | `packages/fs/fs-local/tests/` | 3 |
 | `packages/fs/fs-observation-policy/tests/` | 1 |
 | `packages/fs/fs-sandbox/tests/` | 2 |
 | `packages/fs/fs/tests/` | 2 |
-| `packages/fs/tool-fs-search/tests/` | 5 |
+| `packages/fs/tool-fs-search/tests/` | 6 |
 | `packages/fs/tool-fs/tests/` | 8 |
 | `packages/fs/tool-str-replace-editor/tests/` | 1 |
 | `packages/goal/command-goal/tests/` | 1 |
 | `packages/goal/goal-round-driver/tests/` | 2 |
-| `packages/goal/goal/tests/` | 4 |
+| `packages/goal/goal/tests/` | 6 |
 | `packages/goal/tool-goal/tests/` | 1 |
 | `packages/guard/repeat-tool-reminder/tests/` | 1 |
 | `packages/guard/timeout-policy/tests/` | 1 |
 | `packages/hooks/hook-protocol/tests/` | 7 |
 | `packages/hooks/hooks-claude-code/tests/` | 7 |
 | `packages/hooks/hooks-codex/tests/` | 6 |
-| `packages/host/apiproxy/tests/` | 20 |
 | `packages/host/directory-picker-auto/tests/` | 2 |
 | `packages/host/directory-picker-browse/tests/` | 1 |
 | `packages/host/directory-picker-native/tests/` | 6 |
 | `packages/host/directory-picker/tests/` | 1 |
 | `packages/host/frontend-static/tests/` | 1 |
-| `packages/host/plugin-inventory/tests/` | 2 |
+| `packages/host/plugin-inventory/tests/` | 1 |
 | `packages/host/webserver/tests/` | 1 |
-| `packages/identity/anonymous-user-id/tests/` | 2 |
+| `packages/identity/anonymous-user-id/tests/` | 1 |
 | `packages/interaction/commands/tests/` | 2 |
 | `packages/interaction/permission-presets/tests/` | 3 |
 | `packages/interaction/tool-ask-user/tests/` | 1 |
@@ -1076,44 +1162,51 @@ python3 AI-Coding-Context/tools/py/semantic_review_checker.py --check-test-topol
 | `packages/jobs/jobs-local/tests/` | 2 |
 | `packages/jobs/jobs/tests/` | 2 |
 | `packages/jobs/tool-jobs/tests/` | 1 |
-| `packages/llm/llm-deepseek/tests/` | 9 |
-| `packages/llm/llm-pi-ai/tests/` | 13 |
+| `packages/llm/deepseek-llm-api-extensions/tests/` | 1 |
+| `packages/llm/llm-deepseek/tests/` | 15 |
+| `packages/llm/llm-pi-ai/tests/` | 22 |
 | `packages/llm/llm-retry/tests/` | 5 |
-| `packages/llm/llm/tests/` | 11 |
-| `packages/llm/token-meter/tests/` | 3 |
+| `packages/llm/llm/tests/` | 13 |
+| `packages/llm/plugin-package-inventory-deepseek/tests/` | 1 |
+| `packages/llm/token-meter/tests/` | 5 |
 | `packages/lsp/lsp-stdio/tests/` | 10 |
 | `packages/lsp/lsp/tests/` | 1 |
 | `packages/lsp/tool-lsp/tests/` | 4 |
-| `packages/mcp/mcp-client/tests/` | 6 |
+| `packages/mcp/mcp-client/tests/` | 8 |
 | `packages/plan/plan-mode/tests/` | 4 |
-| `packages/preset/agent-presets/tests/` | 23 |
+| `packages/preset/agent-presets/tests/` | 29 |
 | `packages/preset/persona/tests/` | 1 |
 | `packages/runtime-diagnostics/invariants/tests/` | 1 |
-| `packages/sandbox/sandbox-local/tests/` | 6 |
+| `packages/sandbox/sandbox-local/tests/` | 8 |
 | `packages/sandbox/sandbox-policy/tests/` | 2 |
-| `packages/sandbox/sandbox-windows-acl/tests/` | 14 |
+| `packages/sandbox/sandbox-windows-acl/tests/` | 12 |
 | `packages/sandbox/sandbox/tests/` | 3 |
-| `packages/schedule/schedule/tests/` | 7 |
-| `packages/sdk/client/tests/` | 3 |
+| `packages/schedule/schedule/tests/` | 8 |
+| `packages/sdk/client/tests/` | 4 |
 | `packages/sdk/protocol/tests/` | 1 |
 | `packages/sdk/server/tests/` | 4 |
-| `packages/session-query/session-log-export/tests/` | 7 |
+| `packages/session-query/session-log-export/tests/` | 8 |
 | `packages/session-query/session-query-sqlite/tests/` | 3 |
-| `packages/session-query/session-query/tests/` | 4 |
+| `packages/session-query/session-query/tests/` | 5 |
 | `packages/session-query/tool-session-query/tests/` | 2 |
 | `packages/session/session-checkpoint-policy/tests/` | 3 |
-| `packages/session/session-persistence-jsonl/tests/` | 4 |
-| `packages/session/session-persistence-sqlite/tests/` | 1 |
-| `packages/session/session-persistence/tests/` | 5 |
-| `packages/session/session-projection-cache/tests/` | 1 |
+| `packages/session/session-format-catalog/tests/` | 2 |
+| `packages/session/session-format-v0-to-v1/tests/` | 5 |
+| `packages/session/session-format-v1-to-v2/tests/` | 3 |
+| `packages/session/session-format/tests/` | 4 |
+| `packages/session/session-log-deepseek/tests/` | 2 |
+| `packages/session/session-persistence-jsonl/tests/` | 9 |
+| `packages/session/session-persistence/tests/` | 3 |
+| `packages/session/session-projection-cache/tests/` | 6 |
 | `packages/session/session-projection/tests/` | 1 |
 | `packages/session/session-stats/tests/` | 2 |
-| `packages/session/session-telemetry-otel/tests/` | 2 |
+| `packages/session/session-telemetry-otel/tests/` | 6 |
 | `packages/session/session-telemetry/tests/` | 2 |
 | `packages/session/session-title-all-prompts-llm/tests/` | 1 |
 | `packages/session/session-title-first-prompt-llm/tests/` | 3 |
 | `packages/session/session-title-llm/tests/` | 1 |
 | `packages/session/session-title/tests/` | 7 |
+| `packages/session/session-turn-outline/tests/` | 2 |
 | `packages/settings/settings-file/tests/` | 5 |
 | `packages/settings/settings/tests/` | 4 |
 | `packages/shell/bash-local/tests/` | 2 |
@@ -1124,60 +1217,69 @@ python3 AI-Coding-Context/tools/py/semantic_review_checker.py --check-test-topol
 | `packages/shell/shell/tests/` | 2 |
 | `packages/shell/tool-bash-persistent/tests/` | 2 |
 | `packages/shell/tool-bash/tests/` | 2 |
-| `packages/shell/tool-pwsh/tests/` | 3 |
+| `packages/shell/tool-pwsh-persistent/tests/` | 2 |
+| `packages/shell/tool-pwsh/tests/` | 5 |
 | `packages/skill/skill-badge/tests/` | 1 |
 | `packages/skill/skill-filesystem/tests/` | 2 |
 | `packages/skill/skill/tests/` | 1 |
 | `packages/skill/tool-skill/tests/` | 1 |
-| `packages/spill/spill-local/tests/` | 1 |
+| `packages/spill/spill-local/tests/` | 2 |
 | `packages/spill/spill-policy/tests/` | 1 |
 | `packages/spill/spill/tests/` | 1 |
 | `packages/storage/storage-domain/tests/` | 3 |
 | `packages/storage/storage-json/tests/` | 1 |
-| `packages/storage/storage-sqlite/tests/` | 2 |
+| `packages/storage/storage-sqlite/tests/` | 1 |
 | `packages/storage/storage/tests/` | 2 |
-| `packages/subagent/subagent-acp/tests/` | 4 |
-| `packages/subagent/subagent-claude-code/tests/` | 5 |
-| `packages/subagent/subagent-codex/tests/` | 6 |
-| `packages/subagent/subagent-dsh-sdk/tests/` | 2 |
+| `packages/subagent/subagent-acp/tests/` | 7 |
+| `packages/subagent/subagent-claude-code/tests/` | 8 |
+| `packages/subagent/subagent-codex/tests/` | 9 |
+| `packages/subagent/subagent-dsh-sdk/tests/` | 8 |
 | `packages/subagent/subagent-fork-in-process/tests/` | 2 |
 | `packages/subagent/subagent-in-process-driver/tests/` | 7 |
 | `packages/subagent/subagent-spawn-in-process/tests/` | 3 |
-| `packages/subagent/subagent/tests/` | 10 |
-| `packages/subagent/tool-subagent-control/tests/` | 3 |
-| `packages/subagent/tool-subagent-report/tests/` | 1 |
-| `packages/subagent/tool-subagent/tests/` | 3 |
-| `packages/subprocess/subprocess-local/tests/` | 7 |
-| `packages/subprocess/subprocess/tests/` | 1 |
+| `packages/subagent/subagent/tests/` | 13 |
+| `packages/subagent/tool-subagent-control/tests/` | 4 |
+| `packages/subagent/tool-subagent/tests/` | 7 |
+| `packages/subprocess/subprocess-local/tests/` | 8 |
+| `packages/subprocess/subprocess/tests/` | 2 |
+| `packages/subprocess/win32-process/tests/` | 5 |
 | `packages/terminal/terminal-bash/tests/` | 5 |
 | `packages/terminal/terminal/tests/` | 1 |
 | `packages/terminal/tool-terminal/tests/` | 3 |
-| `packages/test-support/acp-snapshot/tests/` | 52 |
 | `packages/test-support/agent-loop-testkit/tests/` | 1 |
 | `packages/test-support/client-runtime/tests/` | 4 |
-| `packages/test-support/llm-mock-server/tests/` | 3 |
-| `packages/test-support/llm-replay/tests/` | 1 |
-| `packages/test-support/loader-smoke/tests/` | 6 |
+| `packages/test-support/llm-mock-server/tests/` | 2 |
+| `packages/test-support/llm-replay/tests/` | 2 |
+| `packages/test-support/loader-smoke/tests/` | 9 |
+| `packages/test-support/session-snapshot/tests/` | 78 |
 | `packages/todo/tool-todo/tests/` | 5 |
 | `packages/typert/generator/tests/` | 40 |
 | `packages/typert/loader/tests/` | 1 |
 | `packages/typert/protocol/tests/` | 2 |
 | `packages/typert/registry/tests/` | 1 |
-| `packages/util/atomic-write/tests/` | 2 |
+| `packages/util/atomic-write/tests/` | 1 |
+| `packages/util/brand/tests/` | 1 |
+| `packages/util/crypto/tests/` | 1 |
+| `packages/util/deque/tests/` | 1 |
 | `packages/util/home-paths/tests/` | 1 |
+| `packages/util/http-proxy/tests/` | 3 |
 | `packages/util/launch-environment/tests/` | 1 |
-| `packages/util/native-command/tests/` | 1 |
+| `packages/util/native-command/tests/` | 2 |
 | `packages/util/output-retention/tests/` | 1 |
+| `packages/util/time/tests/` | 1 |
 | `packages/util/timeout/tests/` | 1 |
+| `packages/util/workspace-path/tests/` | 1 |
 | `packages/web/tool-web/tests/` | 4 |
-| `packages/web/web-fetch-http/tests/` | 1 |
-| `packages/web/web-search-deepseek/tests/` | 4 |
-| `packages/web/web-search-exa/tests/` | 2 |
-| `packages/web/web-search-perplexity/tests/` | 2 |
+| `packages/web/web-fetch-http/tests/` | 2 |
+| `packages/web/web-search-deepseek/tests/` | 5 |
+| `packages/web/web-search-exa/tests/` | 3 |
+| `packages/web/web-search-perplexity/tests/` | 3 |
 | `packages/web/web/tests/` | 1 |
+| `packages/webhook/webhook-github/tests/` | 4 |
+| `packages/webhook/webhook/tests/` | 4 |
 | `packages/workflow/tool-ralph/tests/` | 2 |
 | `packages/workflow/tool-workflow/tests/` | 2 |
-| `packages/workflow/workflow-worker-thread/tests/` | 8 |
+| `packages/workflow/workflow-worker-thread/tests/` | 9 |
 | `packages/workflow/workflow/tests/` | 2 |
 | `packages/workspace/workspace/tests/` | 2 |
 | `python/sdk/tests/` | 7 |
