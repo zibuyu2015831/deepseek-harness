@@ -318,6 +318,8 @@ grep -rilE "pinecone|weaviate|chroma|qdrant|milvus|pgvector|embedding" packages 
 
 **用户裁定（2026-09-06）**: 采用保守结论方案 (b)。但本轮 E4 实证后新增了方案 (c)（`dev_docs` 内改用 `index.md`），它无需改动仓库门禁脚本、无需 Agent Note、无需向上游提 PR，成本严格低于 (a) 与 (b)。
 
+> **后续（2026-09-07）**：核实发现上游根本不接受外部 PR（见本文档"生成过程中发现的上游文档缺陷"一节的说明）。这把方案 (c) 从"成本更低"升级为**唯一可行**——(a)/(b) 都需要改动 `scripts/translation-pairing.ts`，而对上游脚本的改动无法回流，只能永久停留在 fork 内并在每次 merge 时承担冲突。选 (c) 是对的。
+
 - [x] 默认方案 (b)；**批次 6 开始前请复核是否改选 (c)**
 - [ ] 是否作为独立 PR 先行合入 — 仅方案 (a)/(b) 需要，选 (c) 则不涉及
 
@@ -441,18 +443,20 @@ python3 AI-Coding-Context/tools/py/summary_validator.py --dir dev_docs --recursi
 
 ## 🔬 生成过程中发现的上游文档缺陷（2026-09-06）
 
-撰写 `dev_docs` 时对每条断言做源码核实，附带发现了若干**仓库自有文档与代码实际不符**之处。它们不是 `dev_docs` 的问题，而是上游文档的陈旧或笔误，值得单独提 issue / PR 修复。
+撰写 `dev_docs` 时对每条断言做源码核实，附带发现了若干**仓库自有文档与代码实际不符**之处。它们不是 `dev_docs` 的问题，而是上游文档的陈旧或笔误。
+
+> **无法回流上游。** 2026-09-07 核实：上游 `CONTRIBUTING.md` 明文"cannot accept external pull requests"，`has_issues` 为 `false`，PR API 返回 404，该仓库是私有开发仓库的单向发布镜像。唯一对外渠道是 Discussions，且官方在其中基本不公开回复。因此这些条目的定位是 **fork 内自用的已知陷阱清单**，详见 [`UPSTREAM_DOC_ISSUES.md`](../../UPSTREAM_DOC_ISSUES.md)。
 
 > 这些缺陷是"生成 `dev_docs` 是否值得"的一个正面证据：为满足 one-home-per-fact 而对每条引用做源码核实，本身就构成了一次对上游文档的交叉审计。
 
 | # | 位置 | 上游写的 | 实际情况 | 证据等级 | 影响 |
 | --- | --- | --- | --- | --- | --- |
-| U1 | `AGENTS.md:103`、`vendor/README.md` 本地改动清单 | vendored 包 "rescoped … and `private: true`" | 9 个 `vendor/*/package.json` **全部没有 `private` 字段**，且都带 `publishConfig.access: "public"`；版本也已高于 `vendor/README.md` 清单记录的上游版本（`@deepseek-ai/cordis` v4.0.2 vs 清单 4.0.0-rc.7） | E4 | 高：会让贡献者误以为 vendored 包不发布，而它们实际会被发布。**反证**：`scripts/release/verify.ts` 的 `verifyPublishable` 会拒绝任何 `private: true` 的成员——若上游那两处散文成立，vendor 家族根本发布不出去 |
+| U1 | `AGENTS.md:103`、`vendor/README.md:34` | vendored 包 "rescoped … and `private: true`" | 9 个 `vendor/*/package.json` **全部没有 `private` 字段**，且都带 `publishConfig.access: "public"`。**决定性证据**：`.agents/notes/implemented/process/2026-08-10-npm-release-sequences.md:133` 上游自己记着"该约定 no longer holds" | E4 | 高：会让贡献者误以为 vendored 包不发布，而它们实际会被发布。**反证**：`scripts/release/verify.ts:44-49` 的 `verifyPublishable` 会拒绝任何 `private: true` 的成员——若上游那两处散文成立，vendor 家族根本发布不出去 |
 | U2 | `AGENTS.md:38` | Repository layout 列出 `self-modification/` | 该目录**不存在**；对应内容在 `packages/extensions/`（`tool-cordis` / `ui-cordis` / `cordis-host-runner` / `cordis-client-runner`） | E4 | 中：按图索骥会找不到目录 |
 | U3 | `AGENTS.md:49` | Repository layout 列出 `support/` | 该目录**不存在**；实际是 `packages/test-support/` | E4 | 中：同上 |
-| U4 | `docs/testing.md:40` | 要求保持 `packages/examples/*/tests/built-bin.e2e.ts` 构建产物冒烟测试为绿 | `packages/examples/` **已不存在**（根 `examples/` 亦已移除，内容落位 `snapshots/`） | E4 | 中：指向一个已不存在的测试路径 |
+| U4 | `docs/testing.md:40` | 要求保持 `packages/examples/*/tests/built-bin.e2e.ts` 构建产物冒烟测试为绿 | `packages/examples/` **已不存在**（最后一个同名测试由 `d8dbb8235c` 于 2026-08-23 删除，目录由 `244de7c18a` 于 08-26 清空）；全仓唯一的 `built-bin.e2e.ts` 现位于 `apps/cli/tests/` | E4 | 中：指向一个已不存在的测试路径 |
 | U5 | `docs/subsystems/session.md:92` | `Session.append` "runtime-validates all event data with `isJsonValue`" | 源码 `packages/core/session/src/index.ts:709` 实际调用 `snapshotJsonValue`（一次遍历同时校验并复制，以防住有状态 getter） | E4 | 低-中：函数名错误，但描述的行为方向一致；实际语义比文档更强 |
-| U6 | `packages/llm/llm-deepseek/README.md` | 配置表写 `baseURL` 为 "`$DEEPSEEK_BASE_URL` wins when set" | 源码 `index.ts:377-380` 与同文件 `Config.baseURL` JSDoc 均为 `config.baseURL ?? $DEEPSEEK_BASE_URL ?? 默认`，即**显式配置优先于环境变量** | E3 | 低：疑为表格措辞松散（同段最小配置注释与源码一致），非行为分歧 |
+| U6 | `packages/llm/llm-deepseek/README.md:54` | 配置表写 `baseURL` 为 "`$DEEPSEEK_BASE_URL` wins when set" | 源码 `index.ts:378-380` 与同文件 `Config.baseURL` JSDoc（`:128`）均为 `config.baseURL ?? $DEEPSEEK_BASE_URL ?? 默认`，即**显式配置优先于环境变量** | E3 | 低：疑为表格措辞松散（同段最小配置注释与源码一致），非行为分歧 |
 | U7 | `BENCHMARK.md`（全文仅 231 字节 / 3 行） | 指引读者"运行 `jsonrpc-agent` minimal 变体" | `jsonrpc-agent` 在全仓库**已无任何踪迹**（`find` 零命中）；对应示例已迁至 `python/sdk/examples/`，profile 名为 `sdk-minimal` | E4 | 中：唯一的基准文档指向一个不存在的示例，且该文件不被任何 CI 作业执行，除本方案外全仓无第二处引用 |
 
 **核实命令**：
@@ -466,6 +470,8 @@ grep -n "snapshotJsonValue" packages/core/session/src/index.ts
 ```
 
 **`dev_docs` 的处理原则**：一律**以源码为准**，并在正文显式标注该冲突，而不是沉默地跟随任一方。已按此处理 U1（`AI_Coding_Context.md` 命名规范表 + 证据表 F28）与 U6（`model_configuration.md` 第 7 节）。
+
+> **本表是生成期快照，不是提 issue 的依据。** 权威记录在仓库根目录的 [`UPSTREAM_DOC_ISSUES.md`](../../UPSTREAM_DOC_ISSUES.md)：它经 2026-09-06 第二轮逐条回源复查，补入 6 条附带发现（S1–S6）、按真实根因重新归并成簇，并**删除了本表初版里两条已被证伪的推断**——其一是"vendor 清单版本已陈旧"（`package.json` 与 manifest 版本按设计就不相等，见 `scripts/release/bump.ts:153-161`），其二是 U5 的"隐藏了复制契约"（该契约在 `packages/core/session/src/index.ts:691-693` 有完整文档）。上表已按复查结论修正。
 
 ---
 

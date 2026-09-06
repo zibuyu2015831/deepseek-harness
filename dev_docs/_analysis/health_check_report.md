@@ -298,4 +298,4 @@ review_round_2:
 - [生成方案](generation_plan.md) — 方案与质量检查清单的定义处
 - [问题报告](project_analysis_report.md) — AI-1/AI-2/AI-3 的完整分析与降级验收方案的出处
 - [进度记录](generation_progress.md) — 逐批次产物与验证过程
-- [上游文档缺陷记录](../../UPSTREAM_DOC_ISSUES.md) — 核实过程的副产品，7 条待复查
+- [上游文档缺陷记录](../../UPSTREAM_DOC_ISSUES.md) — 核实过程的副产品；13 条（U1–U7 + S1–S6）经第二轮逐条回源复查全部成立。**上游不收外部 PR、Issues 已关闭**（2026-09-07 核实），故定位为 fork 内自用的已知陷阱清单，暂不对外

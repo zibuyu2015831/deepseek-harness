@@ -17,7 +17,7 @@ verified_at: 2026-09-06
 > **流程阶段进度**: Step 8/8 完成
 > **产物完成度**: 25/25。`_analysis` 四件套 + 主文档 + 17 篇子文档 + 规则合集 + 9 篇流程目录索引（正式文档 28 篇 / 7,090 行）
 > **当前 gate**: 无。验收结论为"有条件通过"，已知缺口见 `health_check_report.md` §5
-> **下一步动作**: ① 复查根目录 `UPSTREAM_DOC_ISSUES.md` 的 7 条上游缺陷后向上游提 issue；② 按 `health_check_report.md` §7 的触发条件做后续复核
+> **下一步动作**: 无待办。根目录 `UPSTREAM_DOC_ISSUES.md` 的 13 条已复查全部成立，但 2026-09-07 核实**上游不接受外部 PR、Issues 已关闭**，用户决定暂不对外，该文件转为 fork 内自用陷阱清单；后续仅按 `health_check_report.md` §7 的触发条件做维护性复核
 > **阻塞原因**: 无
 > **正式生成授权**: ✅ 已授权（2026-09-06，用户回复"方案审核通过"）
 > **批次 6 裁定**: ✅ 用户于 2026-09-06 选定**方案 (c)**——`dev_docs` 内索引文件改用 `index.md`，不改动仓库门禁脚本，无需 Agent Note
@@ -389,10 +389,15 @@ node AI-Coding-Context/tools/js/semantic_review_checker.js --check-fact-conflict
 | 2026-09-06 | 批次 2-5 生成 | 15 篇子文档完成，正式文档累计 18 篇 / 6,182 行 | 全量验证 | 15 篇由并行子代理产出，每篇均要求逐条验证链接与代码块 |
 | 2026-09-06 | 批次 1-5 全量验证 | 链接 2,294 文件 PASS；mermaid 36 图 PASS；代码块 83/85 逐行可溯、0 处编造；仓库门禁复跑全绿 | 等待批次 6 前置裁定 | 临时扩展的两个 `scripts/verify-*.ts` 已 `git checkout` 还原 |
 | 2026-09-06 | 上游缺陷汇总 | 核实并记录 7 处仓库自有文档与代码不符（U1-U7），写入问题报告 | 可据此向上游提 issue/PR | 为满足 one-home-per-fact 而逐条核实引用的副产品 |
-| 2026-09-06 | 上游缺陷复核建档 | 7 条全部重新实证；发现 U2/U3/U7 同源——均为 2026-08-11 重命名台账的遗漏调用点；建 `UPSTREAM_DOC_ISSUES.md` 于仓库根 | 用户复查后提 issue | 该文件不在任何门禁 `PATTERNS` 与配对语料内，已验证不引入回归 |
+| 2026-09-06 | 上游缺陷复核建档 | 7 条全部重新实证；~~发现 U2/U3/U7 同源——均为 2026-08-11 重命名台账的遗漏调用点~~（**此归因已被后两轮推翻，见下**）；建 `UPSTREAM_DOC_ISSUES.md` 于仓库根 | 用户复查后提 issue | 该文件不在任何门禁 `PATTERNS` 与配对语料内，已验证不引入回归 |
 | 2026-09-06 | 批次 6 裁定 | 用户选定方案 (c)：`dev_docs` 内索引改用 `index.md` | 执行批次 6 | 零改动路径：不碰仓库门禁脚本与配置，无需 Agent Note |
 | 2026-09-06 | 批次 6 生成 | 10 个产物完成（`AI_RULES.md` 224 行 + 9 篇 `index.md`）；配对门禁仍为 1135 组一致 | 批次 7 验收 | 方案 (c) 的 E4 证据取得 |
 | 2026-09-06 | 批次 7 验收 | `health_check_report.md` 落盘，verdict = 有条件通过；hygiene 构建后 16/16 全绿 | 复查上游缺陷并提 issue | AICC 三套 checker 如实标注 `NOT_RUN`，未复用历史 PASS |
+| 2026-09-06 | 全面复查（9 代理对抗审计） | 62 条采纳 / 3 条驳回；**推翻上一行的同源归因**——台账是活台账，`:260`/`:261` 与 `:279` 相隔十三天、实施提交不同，重新归并为"命名契约"与"examples 退役"两簇 | 提交并推送 | 详见 `health_check_report.md` §7bis |
+| 2026-09-06 | 提交推送 | `cfde65f1ab`，33 文件推至 fork `zibuyu2015831/deepseek-harness` 的 `zibuyu` 分支；pre-commit + pre-push `typecheck` 均通过 | 上游缺陷逐条复查 | 仅推 fork，**未向 upstream 提交任何内容** |
+| 2026-09-06 | 上游缺陷逐条复查 | 13 条（U1–U7 + S1–S6）全部回源重验，结论全部维持；**改正本文件体系自身的 3 处记录错误**：簇①根因句写反（`a2d0f7f411` 实际改过那棵树）、U1 的 255 口径误作"全仓"（全仓 273 份中 13 份 private）、U6 行号偏一（`:378-380`） | 核实投递渠道 | 一键复核脚本已补 `--exclude-dir=lib`（构建后 `.js.map` 会污染 grep）并自测通过 |
+| 2026-09-07 | 投递可行性核实 | **上游不接受任何外部代码贡献**：`CONTRIBUTING.md` 明文拒绝外部 PR；`has_issues=false`；PR API 返回 404；全部 merge 来自 `deepseek-harness/…`（该 org `public_repos=0`）——即私有开发仓库的单向发布镜像。唯一渠道 Discussions，抽查最近 100 帖的 160 条评论，`authorAssociation` 全为 `NONE`（无官方公开回复） | 用户裁定 | 上表 391/392/395 行"可据此提 issue/PR"的预期在当时成立，此行推翻之 |
+| 2026-09-07 | 用户裁定 | **暂不对外**；`UPSTREAM_DOC_ISSUES.md` 转为 fork 内自用的已知陷阱清单，并保留完整投递材料备用 | 无 | 同时新增"在 fork 内修复"一节：仅 U1/S2 与 U2/U3/S1 值得在 fork 内改（根 `AGENTS.md` 不在双语配对语料内，改动最干净），其余不改以免抬高 merge 冲突面 |
 
 ---
 
@@ -407,7 +412,7 @@ node AI-Coding-Context/tools/js/semantic_review_checker.js --check-fact-conflict
 
 ### 当前恢复入口
 
-**生成流程已全部完成，无待恢复入口。** 后续工作是维护性质的，触发条件见 [`health_check_report.md`](health_check_report.md) §7；待办事项是复查根目录 [`UPSTREAM_DOC_ISSUES.md`](../../UPSTREAM_DOC_ISSUES.md) 的 7 条上游缺陷后向上游提 issue。
+**生成流程已全部完成，无待恢复入口。** 后续工作是维护性质的，触发条件见 [`health_check_report.md`](health_check_report.md) §7；根目录 [`UPSTREAM_DOC_ISSUES.md`](../../UPSTREAM_DOC_ISSUES.md) 的 13 条上游缺陷已复查全部成立，但**上游不接受外部贡献**（2026-09-07 核实），用户决定暂不对外——该文件已转为 fork 内自用的已知陷阱清单，**无待办**。
 
 ---
 

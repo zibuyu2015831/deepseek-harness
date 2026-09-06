@@ -132,7 +132,7 @@ Python            8,718 行
 
 **方案与进度**：[生成方案](_analysis/generation_plan.md) · [问题报告](_analysis/project_analysis_report.md) · [进度记录](_analysis/generation_progress.md) · [健康检查](_analysis/health_check_report.md)
 
-**上游缺陷台账**：[`UPSTREAM_DOC_ISSUES.md`](../UPSTREAM_DOC_ISSUES.md) — fork 内工作稿，记录在上游官方文档中发现的错误，复查通过后才对外提 issue。
+**上游缺陷台账**：[`UPSTREAM_DOC_ISSUES.md`](../UPSTREAM_DOC_ISSUES.md) — 13 条经复查确认的**上游文档与源码不符**之处。读上游文档踩到坑时先查它。上游不接受外部 PR 且 Issues 已关闭（见该文件"投递可行性"），所以它的定位是 **fork 内自用的已知陷阱清单**，不是待提交队列。
 
 ---
 

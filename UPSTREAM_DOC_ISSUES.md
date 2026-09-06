@@ -1,19 +1,58 @@
-# 上游文档缺陷记录（待复查）
+# 上游文档缺陷记录（fork 内自用，暂不对外）
 
 > **本文件是 fork 内的工作稿，不是上游仓库内容。** 它记录在生成 `dev_docs/` 中文导航层过程中，附带发现的**上游文档与代码实际不符**之处。
-> 用途：集中复查 → 人工确认无误 → 再向 `deepseek-ai/deepseek-harness` 提 issue / PR。**未复查通过前不要对外提交。**
+>
+> **定位（2026-09-07 更新）**：核实后确认**上游不接受任何形式的外部代码贡献**（详见下节"投递可行性"）。因此本文件的用途改为——
+>
+> - ✅ **fork 内自用**：这 13 条是读上游文档时的**已知陷阱清单**。踩到其中任何一条，先查这里，别浪费时间怀疑自己。
+> - ✅ **可在本 fork 内直接修掉**这些文档缺陷，不需要任何人批准（但会增加与 upstream 的合并冲突面，见"在 fork 内修复"一节）。
+> - ⏸️ **暂不对外投递**。用户已决定暂缓。下方"若将来决定对外"一节保留了完整的投递材料，随时可用。
 
 ## 元信息
 
 | 项 | 值 |
 | --- | --- |
-| 记录日期 | 2026-09-06（同日经独立对抗性复核修订） |
-| 复查状态 | ⬜ 未开始 |
-| 基准提交 | `998014f`（`zibuyu` 分支，merge `master`） |
-| 上游基准 | `d347e70` — `Merge pull request #3554 from deepseek-harness/release/dsh-0.1.3-alpha.1`（2026-09-04） |
+| 记录日期 | 2026-09-06（同日经独立对抗性复核修订；同日第二轮逐条回源复查） |
+| 复查状态 | ✅ 第二轮逐条复查完毕（2026-09-06）；投递可行性核实完毕（2026-09-07） |
+| 对外状态 | ⏸️ **暂不对外**（用户决定，2026-09-07）——上游不收外部 PR，Issues 已关闭 |
+| 基准提交 | `cfde65f`（`zibuyu` 分支，merge `master`） |
+| 上游基准 | `d347e70` — `Merge pull request #3554 from deepseek-harness/release/dsh-0.1.3-alpha.1`（2026-09-04，复查时 `git ls-remote upstream master` 仍为此值） |
 | 上游远端 | `git@github.com:deepseek-ai/deepseek-harness.git` |
-| 条目数 | 7 条主条目（U1–U7）+ 5 条附带发现（S1–S5） |
-| 复核结论 | 7 条**全部成立**，但其中 U5 需收窄、**A/B 分组曾经错误已重新归并**（见下） |
+| 条目数 | 7 条主条目（U1–U7）+ 6 条附带发现（S1–S6） |
+| 复核结论 | 13 条**全部成立**；U5 需收窄；**A/B 分组曾经错误已重新归并**；第二轮另修正 3 处本文件自身的记录错误（见下） |
+
+## 投递可行性（2026-09-07 核实）
+
+**结论：上游明文拒绝外部 PR，且 Issues 已整体关闭。唯一对外渠道是 Discussions，而官方在其中基本不公开回复。**
+
+上游 `CONTRIBUTING.md`（仓库自带，双语）：
+
+> DeepSeek Harness is still at an early stage and under active development. **We are sorry that we cannot accept external pull requests at the moment.**
+
+中文版 `CONTRIBUTING.zh.md` 同义：「很抱歉，我们目前无法接受外部 PR」。
+
+三条互相独立的机制性佐证：
+
+| 检查 | 结果 | 含义 |
+| --- | --- | --- |
+| `gh repo view --json hasIssuesEnabled` | **`false`** | Issues 标签页整个关闭；`.github/ISSUE_TEMPLATE/config.yml` 另有 `blank_issues_enabled: false` |
+| `gh api repos/deepseek-ai/deepseek-harness/pulls` | **HTTP 404** | PR 入口在该仓库上不可达 |
+| `gh pr list --state all --limit 300` | **0 条** | 不是"外部 PR 被拒"，而是该仓库从无 PR 记录 |
+
+**该仓库是单向发布镜像。** `git log --merges` 显示全部 merge commit 来自 `deepseek-harness/…` 分支（另一个 GitHub 组织），而 `gh api orgs/deepseek-harness` 显示该组织 `public_repos = 0`——真实开发在私有仓库，代码单向推送到 `deepseek-ai/deepseek-harness`。仓库里那份中文 `pull_request_template.md` 与 `.github/ISSUE_TEMPLATE/` 是内部仓库的产物被一并镜像出来的，在公开侧点不开。
+
+**Discussions 的真实生态**：`CONTRIBUTING.md` 指定用 GitHub Discussions 报告问题（不是 Issues）。已启用，6 个分类（Announcements / General / Ideas / Polls / Q&A / Show Your Plugins!），**无 Bug 专用分类**——社区实际做法是发在 General 并加 `[Bug]` 前缀，中英文均可。但截至 2026-09-07，共 5,707 个 discussion；抽查最近 100 帖的全部 160 条评论，`authorAssociation` **全部为 `NONE`**，即无一条官方成员的公开回复。这与官方自述一致：
+
+> We are a very small team and may not be able to reply to every post, **but we monitor them and consider them when allocating resources.**
+
+即：发帖会被看到、会影响排期，但不要期待回复，也不存在"被合入"这种确认。
+
+**第二轮复查修订**（2026-09-06，逐条回源核对全部 `file:line` 与 `git blame`）：13 条结论全部维持，但本文件自身有三处记录错误已改正——
+
+1. **簇① 的根因句原先写反了**：原文称 `a2d0f7f411` "没有触碰 `AGENTS.md` 的目录树"。实测该提交**恰恰改了这棵树**（同一 block 内 `bash/`→`shell/`、`pty/`→`terminal/`、`compact/`→`compaction/`，并在 `self-modification/` 下方三行插入 `identity/`）。改正后的事实**对 issue 更有利**，见簇①。
+2. **U1 的 private 统计口径错误**：原文称"全仓 255 个 workspace 清单中带 `private: true` 的只有 9 个"。255 是 `packages/*/*` 的数量，不是全仓；全仓 273 份受管清单中有 **13** 份 `private: true`。已改为限定口径。
+3. **U6 的源码行号偏一**：`baseURL` 三元回退在 `src/index.ts:378-380`，`:377` 是 `apiKeyEnv`。
+4. 附带补全：总览表与提交策略表原先漏列正文已有的 S6；U4 补上与 U7 对称的"写的时候是对的"时间线注记；一键复核脚本补 `--exclude=UPSTREAM_DOC_ISSUES.md`（本文件自身会命中两条 grep）。
 
 **发现方式**：`dev_docs` 遵循 one-home-per-fact 原则，每条引用都必须回源码核实。这些缺陷是那次交叉审计的副产品，不是专门排查出来的——意味着**同类问题可能还有，本清单不完备**。
 
@@ -42,23 +81,44 @@
 | S3 | 附带 | `vendor/README.md:11` | 泄漏维护者本机路径 `~/repos/cordis-workspace` | E4 | 低 | ⬜ |
 | S4 | 附带 | `packages/README.md` | 分组总表漏登 `packages/mcp/`（49 行 vs 50 组） | E4 | 低 | ⬜ |
 | S5 | 附带 | `docs/development.md:62` | "Six packages split Host and Client tsconfigs"，实际 8 个 | E4 | 低 | ⬜ |
+| S6 | 附带 | `AGENTS.md:127` vs `docs/testing.md:54` | 快照触发条件两处措辞不一致（少 protocol-visible） | E4 | 低 | ⬜ |
 
-**建议提交策略**（已按修订后的根因重排）：
+**分组**（已按修订后的根因重排）。⏸️ 下表原为"提 issue 的拆分方案"，因上游不收外部贡献而**暂不执行**；保留是因为这个分组同样是**理解这些缺陷成因的正确方式**，也是将来若改用 Discussions 投递时的现成拆分。
 
-| Issue | 内容 | 理由 |
+| 组 | 内容 | 理由 |
 | --- | --- | --- |
 | 1 | **U1 + S2** | 同一主题（vendored 包的发布性质），S2 是 U1 的自证材料 |
 | 2 | **U2 + U3 + S1** | 同一处 `AGENTS.md` 目录树；只修两行会留下一棵仍然误导的树 |
 | 3 | **U4 + U7** | 同一次 examples 退役漏掉的两个文档调用点 |
 | 4 | **U5** | 独立文件、独立子系统 |
 | 5 | **U6** | 独立包、独立作者，**不要并进 U1** |
-| 6 | S3 / S4 / S5 | 琐碎项，可合并为一个 docs 清理 issue，或随手提 PR |
+| 6 | S3 / S4 / S5 / S6 | 琐碎项，彼此无关联，合并成一组即可 |
 
 ---
 
 ## 簇 ①：命名契约提交漏改 `AGENTS.md` 目录树
 
-**共同根因**：提交 `a2d0f7f411`（2026-08-13，*"refactor: apply repository naming contract"*）创建了 `packages/extensions/` 与 `packages/test-support/`，并更新了 `docs/testing.md`，但**没有触碰 `AGENTS.md` 的目录树**。两行的 `git blame` 分别停在 2026-07-30 与 2026-07-26，均早于该提交。
+**共同根因**：提交 `a2d0f7f411`（2026-08-13，*"refactor: apply repository naming contract"*）把 `packages/self-modification/` 改名为 `packages/extensions/`、`packages/support/` 改名为 `packages/test-support/`，**并且同一提交就在改这棵目录树**——它在同一个 block 内改了四项：
+
+```diff
+-  bash/        bash capability: Service Definition + local/pwsh providers + shell Consumers
++  shell/        bash capability: Service Definition + local/pwsh providers + shell Consumers
+-  pty/         persistent PTY capability
++  terminal/         persistent sessions
+-  compact/     compaction capability + basic provider
++  compaction/     compaction capability + basic provider
+@@ -35,6 +35,7 @@
+   self-modification/  the agent inspects/mounts its own plugins
+   hooks/       Claude Code/Codex hook bridges + wire-protocol library
+   session/     durable session data: persistence, projection, titles, telemetry
++  identity/    anonymous identity
+```
+
+最后那个 hunk 的 diff 上下文第一行就是 `self-modification/`——新增的 `identity/` 落在它下方三行处。**所以这不是"忘了这个文件"，而是在同一次树内改名里漏掉了两项。** 两行的 `git blame` 分别停在 `36cf4f32f48`（2026-07-30）与 `c9dc0977491`（2026-07-26），均早于该提交，证实它们确实一直没被跟着改。
+
+> 这条对 issue 措辞很关键：不要写成"文档没跟上重命名"（听起来像作者不知道有这个文件），而应写成"同一次树内改名改了四项、漏了两项"——后者是可核对的事实，也解释了为什么这两行至今仍在。
+
+顺带确认 **`AGENTS.md` 的树是路径断言而非概念标签**：`bash/`→`shell/`、`pty/`→`terminal/` 这些改动本身就是跟着磁盘路径走的。
 
 改名台账 `.agents/notes/implemented/architecture/2026-08-11-repository-naming-contract-and-rename-ledger.md` 记录了这两次重命名（`:260`、`:261`），可作佐证——但注意它是**活台账**，不要在 issue 里把它当成"一次性决策"。
 
@@ -118,7 +178,14 @@ test-support, workspace
 
 ## 簇 ②：examples 退役漏改两个文档调用点
 
-**共同根因**：2026-08 下旬的 examples 退役提交簇——`f3402eff58`（08-23，*"relocate JSON-RPC example and runtime without edits"*）、`d8dbb8235c`（08-23，删掉最后一个 `packages/examples/*/tests/built-bin.e2e.ts`）、`4125514a08`（08-24，*"refactor(repo): retire top-level examples"*）、`244de7c18a`（08-26）。
+**共同根因**：2026-08 下旬的 examples 退役提交簇。注意仓库当时有**两棵各自独立的示例树**，两条缺陷各挂一棵，写 issue 时不要混为一谈：
+
+| 树 | 相关条目 | 退役过程 |
+| --- | --- | --- |
+| 根目录 `examples/` | U7（`jsonrpc-agent`） | `f3402eff58`（08-23，*"relocate JSON-RPC example and runtime without edits"*，`examples/jsonrpc-agent/` → `examples/python-sdk-agent/`）→ `4125514a08`（08-24，*"refactor(repo): retire top-level examples"*，整棵移除） |
+| `packages/examples/` | U4（`built-bin.e2e.ts`） | `d8dbb8235c`（08-23）删掉最后一个 `packages/examples/*/tests/built-bin.e2e.ts` → `244de7c18a`（08-26，*"refactor(bundle): remove the agent spine demo"*）清空整个目录 |
+
+两棵树在同一周内退役，所以合并成一个 issue 是合理的；但**"top-level examples" 这个提交标题只覆盖 U7 那棵**，不要拿它去解释 U4。
 
 ### U4 — `docs/testing.md:40` 要求维护一个已不存在的测试路径
 
@@ -134,6 +201,10 @@ test-support, workspace
 - `packages/sdk/server/tests/built-scope-carrier.e2e.ts`（同段前文）✅ 存在
 
 所以这是一个精确的单路径替换。
+
+**时间线注记（与 U7 同理，措辞上要给作者留余地）**：`docs/testing.md:40` 由 `a2d0f7f4112` 于 **2026-08-13** 写入，而那时 `packages/examples/acp-demo/tests/built-bin.e2e.ts` **还存在**——它是十天后 `d8dbb8235c`（08-23）删掉的最后一个同名文件，整个 `packages/examples/` 目录再由 `244de7c18a`（08-26）清空。所以这一条同样是"写的时候是对的，被后续迁移带失效的"。
+
+`git log --diff-filter=D --name-only -- '*built-bin.e2e.ts'` 可完整重现这个通配符的消亡过程：`stdio-demo`（`4cadf096ce`，07-20）、`tui-demo`（`870fb1cafa`，07-25）、`cli-demo`（`dc57f7d854`，08-08）、`acp-demo`（`d8dbb8235c`，08-23）。
 
 **建议改法**：`packages/examples/*/tests/built-bin.e2e.ts` → `apps/cli/tests/built-bin.e2e.ts`。
 
@@ -190,9 +261,9 @@ Follow [Get started with the Python SDK](docs/user/guide/python-sdk.md) to insta
 | `vendor/schemastery` | `@deepseek-ai/schemastery` | 无 | `access: public` |
 | `vendor/timer` | `@deepseek-ai/cordis-plugin-timer` | 无 | `access: public` |
 
-全仓 255 个 workspace 清单中，带 `private: true` 的只有 `packages/experimental/*` 那 9 个。
+**对照口径（引用这个数字时按此写，不要笼统说"全仓"）**：`packages/*/*` 下 255 个包里，带 `private: true` 的只有 `packages/experimental/*` 那 9 个；`vendor/*` 九个一个也没有。全仓 273 份受管 `package.json` 里共 13 份 `private: true` = 上述 9 个 + `native/landlock-run`（原生构建工作区根）+ `python/sdk-runtime`（单文件可执行的部署根）+ `website` + 仓库根 `package.json`——**都不是 vendored 包**。
 
-**旁证一：vendor 是一等发布家族。** `scripts/release/families.ts:371-375` 定义了 `class VendorFamily`（`patterns = ['vendor/*/package.json']`、`tagPrefix = 'vendor-'`），`.github/workflows/release-vendor-publish.yml:114` 实际执行 `pnpm run release:publish --family vendor`。
+**旁证一：vendor 是一等发布家族。** `scripts/release/families.ts:371-375` 定义了 `class VendorFamily`（`patterns = ['vendor/*/package.json']`、`tagPrefix = 'vendor-'`），`.github/workflows/release-vendor-publish.yml:114` 实际执行 `pnpm run release:publish --family vendor --from dist/npm-vendor`。
 
 **旁证二：若文档成立则发布跑不起来。** `scripts/release/verify.ts:44-49` 的 `verifyPublishable` 会拒绝任何 `private: true` 的发布成员：
 
@@ -276,7 +347,7 @@ function verifyPublishable(members: readonly ReleaseMember[]): void {
       ?? PUBLIC_BASE_URL,
 ```
 
-—— `packages/llm/llm-deepseek/src/index.ts:377-380`
+—— `packages/llm/llm-deepseek/src/index.ts:378-380`（`:377` 是同一 `return` 对象里的 `apiKeyEnv`）
 
 **为什么不能辩解为"胜过本行展示的默认值"**：这是最强的辩护路径（该表第二列表头正是 Default），但**同一张表两行之后就否掉了它**。`README.md:57`：
 
@@ -323,14 +394,20 @@ function verifyPublishable(members: readonly ReleaseMember[]): void {
 
 ## 一键复核
 
-在仓库根目录执行，用于人工复查时快速确认每条仍然成立：
+在仓库根目录执行，用于人工复查时快速确认每条仍然成立。**注意脚本必须排除本文件**——它自己引用了这些字符串，否则两条 grep 会自命中。
 
 ```bash
+# lib/ 与 dist/ 必须排除：在已构建的工作区里，.js.map 会把这些字符串复制进来（实测输出会涨到 1.3 MB）。
+X='--exclude=UPSTREAM_DOC_ISSUES.md --exclude-dir=node_modules --exclude-dir=.git
+   --exclude-dir=dev_docs --exclude-dir=lib --exclude-dir=dist'
+
 echo '--- U1: vendored 包的 private / publishConfig ---'
 python3 -c "import json,glob;[print(f, json.load(open(f)).get('private'), json.load(open(f)).get('publishConfig')) for f in sorted(glob.glob('vendor/*/package.json'))]"
 grep -n 'private: true' AGENTS.md vendor/README.md
 grep -n 'no longer holds' .agents/notes/implemented/process/2026-08-10-npm-release-sequences.md
 sed -n '44,49p' scripts/release/verify.ts
+echo "vendor 里 private:true 的数量（期望 0）："
+python3 -c "import json,glob;print(sum(json.load(open(f)).get('private') is True for f in glob.glob('vendor/*/package.json')))"
 
 echo '--- S2: vendor/README.md 自相矛盾 ---'
 sed -n '5p;34p' vendor/README.md
@@ -339,51 +416,87 @@ echo '--- U2 / U3 / S1: AGENTS.md 目录树 vs 实际 ---'
 grep -n 'self-modification/\|^  support/' AGENTS.md
 ls -d packages/self-modification packages/support 2>&1   # 期望：均不存在
 ls -d packages/extensions packages/test-support           # 期望：均存在
-echo "树列出组数 vs 实际组数："
+echo "树列出组数（期望 35，含两个失效项）vs 实际组数（期望 50）："
 awk '/^packages\/ /,/^python\//' AGENTS.md | grep -cE '^  [a-z]'
 ls -d packages/*/ | wc -l
+echo "缺失的组（期望 17 个；注意字符类要含数字，否则会误报 e2b）："
+awk '/^packages\/ /,/^python\//' AGENTS.md | grep -oE '^  [a-z0-9-]+/' | tr -d ' /' | sort > /tmp/listed
+ls -d packages/*/ | sed 's|packages/||;s|/||' | sort > /tmp/actual
+comm -13 /tmp/listed /tmp/actual | tr '\n' ' '; echo
+echo "同一提交是否改过这棵树（期望：能看到 bash→shell / pty→terminal / +identity）："
+git show a2d0f7f411 -- AGENTS.md | grep -E '^[-+]  (bash|shell|pty|terminal|compact|identity)'
 
 echo '--- U4 / U7: examples 退役的两个漏网引用 ---'
 grep -n 'packages/examples' docs/testing.md
-find . -path ./node_modules -prune -o -name 'built-bin.e2e.ts' -print
+find . -path ./node_modules -prune -o -name 'built-bin.e2e.ts' -print  # 期望：仅 apps/cli
 find . -path ./node_modules -prune -o -name '*jsonrpc-agent*' -print   # 期望：零命中
-grep -rl 'jsonrpc-agent' --exclude-dir=node_modules --exclude-dir=.git \
-  --exclude-dir=dev_docs --exclude-dir=.agents .                       # 期望：仅 BENCHMARK.md
+grep -rl 'jsonrpc-agent' $X --exclude-dir=.agents .                    # 期望：仅 BENCHMARK.md
+git log --diff-filter=D --name-only --format='%h %ad %s' --date=short -- '*built-bin.e2e.ts'
 
 echo '--- U5: JSDoc 函数名 vs 源码调用 ---'
-grep -rn 'runtime-validates all event data' --exclude-dir=node_modules --exclude-dir=.git .
+grep -rn 'runtime-validates all event data' $X .   # 期望：源 types.ts:325 + 衍生 4 篇，共 5 命中
 grep -n 'snapshotJsonValue\|isJsonValue' packages/core/session/src/index.ts | head
 
 echo '--- U6: baseURL 优先级与同表 win 用法 ---'
 sed -n '40p;54p;57p' packages/llm/llm-deepseek/README.md
-sed -n '376,380p' packages/llm/llm-deepseek/src/index.ts
+sed -n '377,380p' packages/llm/llm-deepseek/src/index.ts   # :377 是 apiKeyEnv，:378-380 才是 baseURL
+sed -n '128p;134p' packages/llm/llm-deepseek/src/index.ts  # 两处正确的 JSDoc 参照
 
-echo '--- S4 / S5: 附带项 ---'
+echo '--- S4 / S5 / S6: 附带项 ---'
 grep -c 'mcp' packages/README.md                                       # 期望：0
 grep -n 'Six packages split' docs/development.md
 for f in packages/*/*/tsconfig.host.json; do d=$(dirname "$f"); \
   [ -f "$d/tsconfig.client.json" ] && echo "$d"; done | wc -l          # 期望：8
+grep -n 'product-user-visible' AGENTS.md                               # 期望：:127
+grep -n 'protocol-, or human-visible' docs/testing.md                  # 期望：:54
 ```
 
 ---
 
-## 提 issue 前的检查清单
+## 在 fork 内修复（当前可做的事）
 
-- [ ] 用上面的一键复核脚本，在**同步到最新 upstream/master 之后**重跑一遍——部分条目可能已被上游修复。（截至本次核对，`git ls-remote upstream` 的 `master` 仍是 `d347e70`，与基准一致，全部条目仍然成立。）
-- [ ] 确认每条的证据引用（`file:line`）在最新上游代码上仍然对得上，行号会漂移。
-- [ ] 检索上游 issue 列表，避免重复提交。
-- [ ] **删除本文件的元信息表**（含基准提交 `998014f`、`zibuyu` 分支名、fork 远端）与所有 `dev_docs/` 内部引用——这些都不能出现在提给上游的内容里。
-- [ ] 确认不含任何本机绝对路径或本地环境信息。
+上游 MIT 许可，fork 内改这些文档不需要任何人批准。但**不建议无差别地全改**，理由是合并成本：
 
-**建议的 issue 标题**（英文，已按修订后的根因重写）：
+| 条目 | fork 内是否值得改 | 说明 |
+| --- | --- | --- |
+| U1 / S2 | ⭕ **值得** | `AGENTS.md:103` 与 `vendor/README.md:34` 会直接误导你判断 vendored 包的发布性质。改动量各一句 |
+| U2 / U3 / S1 | ⭕ **值得** | `AGENTS.md` 目录树是最常被翻的导航面，两处死路径 + 缺 17 组，实际影响最大 |
+| U4 / U7 / U5 / U6 / S3–S6 | ❌ **不必** | 影响面小，且 `docs/` 与 `packages/**/README.md` 属于双语配对语料——改一处就要同步改 `.zh.md` 与 `.i18n.yaml`，否则 `pnpm run doc-sync` 会红。收益不抵成本 |
 
-| Issue | 标题 |
+**如果要改，注意两件事**：
+
+1. **配对门禁**。`docs/**` 与 `packages/*/*/README.md` 受 `scripts/translation-pairing.ts` 管辖，`.md` / `.zh.md` / `.i18n.yaml` 必须同步。根 `AGENTS.md` 不在配对语料内（它只有单语版），所以 U1/U2/U3/S1 那几处改起来最干净。
+2. **合并冲突**。每改一行上游文件，就在将来 `git merge upstream/master` 时多一个潜在冲突点。当前 `dev_docs/` 之所以零冲突，正是因为它只新增文件、不碰上游文件。**更稳的做法是完全不改上游文件，只依赖本清单**——踩到坑时来查，而不是预先改掉。
+
+## 若将来决定对外
+
+⏸️ 用户已决定暂不对外（2026-09-07）。以下材料保留完整，改主意时直接可用。
+
+**渠道**：只能是 **GitHub Discussions → General 分类**，标题加 `[Docs]` 前缀（社区惯例，见"投递可行性"）。不能提 PR，也没有 Issues 可提。
+
+**建议拆成两帖**，而不是一帖或六帖：
+
+- **U1 单独一帖**——它有决定性证据（上游自己的 implemented note 写着这条约定 `no longer holds`）、影响最高、维护者不用跑任何命令就能确认。混在长帖里会被淹没，也拿不到独立 upvote（`CONTRIBUTING.md` 明说 upvote 影响资源分配）。
+- **其余 12 条合一帖**，一键复核脚本原样附上——那是加分项，维护者可以直接跑。
+
+**发帖前必须做的**：
+
+- [x] **逐条回源复查全部 13 条**（2026-09-06 第二轮）：每个 `file:line`、每条 `git blame`、每个数字都在本机重新执行核对，13 条结论全部维持，本文件自身的 3 处记录错误已改正。
+- [ ] 用上面的一键复核脚本，在**同步到最新 upstream/master 之后**重跑一遍——部分条目可能已被上游修复。（截至 2026-09-07 核对，`git ls-remote upstream master` 仍是 `d347e70`，与基准一致，全部条目仍然成立。）
+- [ ] 确认每条的证据引用（`file:line`）在最新上游代码上仍然对得上，行号会漂移。**尤其是 U5 的 4 处衍生文档行号**（`persistence-catalog*.md` 由生成器产出，任何上游改动都会整体位移）。
+- [ ] 检索现有 Discussions，避免重复——5,707 帖里可能已有人报过。用 `gh api graphql` 搜 `AGENTS.md`、`private: true`、`jsonrpc-agent` 等关键词。
+- [ ] **删除本文件的元信息表**（含基准提交 `cfde65f`、`zibuyu` 分支名、fork 远端）、"第二轮复查修订"一节、"在 fork 内修复"一节与所有 `dev_docs/` 内部引用——这些都不能出现在对外内容里。
+- [ ] 确认不含任何本机绝对路径或本地环境信息。（本文件唯一出现的 `~/repos/cordis-workspace` 是**上游文档里的原文**，即 S3 本身，不是本机路径。）
+
+**建议的英文标题**（原为 issue 标题，用作 Discussion 标题同样合适）：
+
+| 组 | 标题 |
 | --- | --- |
-| U1 + S2 | `docs: vendored packages are documented as private: true but all nine publish publicly` |
-| U2 + U3 + S1 | `docs: AGENTS.md repository-layout tree lists two renamed groups and omits 17 others` |
-| U4 + U7 | `docs: testing.md and BENCHMARK.md still reference paths retired in the August examples cleanup` |
-| U5 | `docs(session): tool/result JSDoc names isJsonValue but append calls snapshotJsonValue` |
-| U6 | `docs(llm-deepseek): baseURL row says the env var "wins", but explicit config takes precedence` |
+| U1 + S2 | `[Docs] vendored packages are documented as private: true but all nine publish publicly` |
+| U2 + U3 + S1 | `[Docs] AGENTS.md repository-layout tree lists two renamed groups and omits 17 others` |
+| U4 + U7 | `[Docs] testing.md and BENCHMARK.md still reference paths retired in the August examples cleanup` |
+| U5 | `[Docs] tool/result JSDoc names isJsonValue but Session.append calls snapshotJsonValue` |
+| U6 | `[Docs] llm-deepseek baseURL row says the env var "wins", but explicit config takes precedence` |
 
 **不要使用**初版的标题 `docs: AGENTS.md and BENCHMARK.md still reference pre-2026-08-11 paths`——两个半句都不成立（见开头的修订说明）。
 
@@ -391,3 +504,4 @@ for f in packages/*/*/tsconfig.host.json; do d=$(dirname "$f"); \
 
 - 完整分析上下文：[`dev_docs/_analysis/project_analysis_report.md`](dev_docs/_analysis/project_analysis_report.md)（"生成过程中发现的上游文档缺陷" 一节）
 - `dev_docs` 对这些冲突的处理原则：一律**以源码为准**，并在正文显式标注冲突，而不是沉默地跟随任一方。已按此处理 U1、U2/U3、U6。
+- 上游贡献政策原文：[`CONTRIBUTING.md`](CONTRIBUTING.md) / [`CONTRIBUTING.zh.md`](CONTRIBUTING.zh.md)。
