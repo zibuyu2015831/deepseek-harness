@@ -370,7 +370,7 @@ skill 注册表是 **host + per-scope 分层**的，和 tools 注册表同构：
 
 **逐文件清单在 [adding-a-package.md](../docs/cookbook/adding-a-package.md#1-create-the-package)，这里只讲判据。**
 
-**放哪个 group。** 路径是 `packages/<group>/<pkg>/`，包名是 `@deepseek-ai/dsh-<name>`。当前有 50 个能力组、255 个包。**组的完整清单以 [`packages/README.md`](../packages/README.md) 为准**；[`AGENTS.md` — Repository layout](../AGENTS.md#repository-layout) 的树只列了 35 项，且其中 `self-modification/` 与 `support/` 在磁盘上已不存在（见 [`UPSTREAM_DOC_ISSUES.md`](../UPSTREAM_DOC_ISSUES.md) U2/U3）。**能匹配到已有组就用已有组**；新建组是允许的，但它是纯容器——没有 `package.json`、没有源文件，包仍然恰好在它下面一层。
+**放哪个 group。** 路径是 `packages/<group>/<pkg>/`，包名是 `@deepseek-ai/dsh-<name>`。当前有 50 个能力组、255 个包。**组的完整清单以 [`packages/README.md`](../packages/README.md) 为准**（本 fork 已于 2026-09-07 补登漏掉的 `mcp/`，现为完整的 50 行）；[`AGENTS.md` — Repository layout](../AGENTS.md#repository-layout) 的树只列 35 项，是选列而非全集——上游原树还含 `self-modification/` 与 `support/` 两个磁盘上已不存在的路径，本 fork 已改为 `extensions/` 与 `test-support/`，并把树尾指针改写为 `Complete group list:` 以标明其非完整性（见 [`UPSTREAM_DOC_ISSUES.md`](../UPSTREAM_DOC_ISSUES.md) U2/U3/S1/S4）。**能匹配到已有组就用已有组**；新建组是允许的，但它是纯容器——没有 `package.json`、没有源文件，包仍然恰好在它下面一层。
 
 **叫什么名。** [Name the role that exists](../docs/cookbook/adding-a-package.md#name-the-role-that-exists) 有一张 17 行的词表（`Controller` / `Store` / `Registry` / `Runtime` / `Resolver` / `Engine` / `Policy` / `Executor` / `Gateway` / `Provider` / `Backend` / `Handle` / `Service` …），每个词都写清了"什么时候用"和"什么时候不许用"。命名当前稳定的职责，**不要**命名第一个实现、可能的未来扩展，或者 Cordis 基类。`ctx` key 的单复数要和类的角色一致：一个引擎/策略/控制器用单数，注册表或拥有多个具名成员的服务用复数。
 

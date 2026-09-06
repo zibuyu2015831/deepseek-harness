@@ -15,10 +15,11 @@
 | 记录日期 | 2026-09-06（同日经独立对抗性复核修订；同日第二轮逐条回源复查） |
 | 复查状态 | ✅ 第二轮逐条复查完毕（2026-09-06）；投递可行性核实完毕（2026-09-07） |
 | 对外状态 | ⏸️ **暂不对外**（用户决定，2026-09-07）——上游不收外部 PR，Issues 已关闭 |
+| fork 内修复 | ✅ 已修 U1 / U2 / U3 / S1 / S2 / S4（2026-09-07，见"本 fork 已修复"一节）；其余保持原样 |
 | 基准提交 | `cfde65f`（`zibuyu` 分支，merge `master`） |
 | 上游基准 | `d347e70` — `Merge pull request #3554 from deepseek-harness/release/dsh-0.1.3-alpha.1`（2026-09-04，复查时 `git ls-remote upstream master` 仍为此值） |
 | 上游远端 | `git@github.com:deepseek-ai/deepseek-harness.git` |
-| 条目数 | 7 条主条目（U1–U7）+ 6 条附带发现（S1–S6） |
+| 条目数 | 7 条主条目（U1–U7）+ 8 条附带发现（S1–S8；S7/S8 为 2026-09-07 实修时新增） |
 | 复核结论 | 13 条**全部成立**；U5 需收窄；**A/B 分组曾经错误已重新归并**；第二轮另修正 3 处本文件自身的记录错误（见下） |
 
 ## 投递可行性（2026-09-07 核实）
@@ -67,21 +68,23 @@
 
 ## 总览
 
-| # | 簇 | 位置 | 一句话 | 证据 | 影响 | 复查 |
+| # | 簇 | 位置 | 一句话 | 证据 | 影响 | fork 内 |
 | --- | --- | --- | --- | --- | --- | --- |
-| U1 | 独立 | `AGENTS.md:103` + `vendor/README.md:34` | 称 vendored 包 `private: true`，实际全部公开发布；**上游自己的已实施 Note 记录了该约定失效，但从未执行** | E4 | 高 | ⬜ |
-| U2 | ① 命名契约 | `AGENTS.md:38` | 目录树列出已改名的 `self-modification/` | E4 | 中 | ⬜ |
-| U3 | ① 命名契约 | `AGENTS.md:49` | 目录树列出已改名的 `support/` | E4 | 中 | ⬜ |
+| U1 | 独立 | `AGENTS.md:103` + `vendor/README.md:34` | 称 vendored 包 `private: true`，实际全部公开发布；**上游自己的已实施 Note 记录了该约定失效，但从未执行** | E4 | 高 | ✅ 已修 |
+| U2 | ① 命名契约 | `AGENTS.md:38` | 目录树列出已改名的 `self-modification/` | E4 | 中 | ✅ 已修 |
+| U3 | ① 命名契约 | `AGENTS.md:49` | 目录树列出已改名的 `support/` | E4 | 中 | ✅ 已修 |
 | U4 | ② examples 退役 | `docs/testing.md:40` | 要求维护一个已不存在的测试路径 | E4 | 中 | ⬜ |
 | U7 | ② examples 退役 | `BENCHMARK.md:3` | 指向已迁移的 `jsonrpc-agent` 示例 | E4 | 中 | ⬜ |
 | U5 | 独立 | `packages/core/session/src/types.ts:325` | JSDoc 写错函数名（仅此，见收窄说明） | E4 | 中 | ⬜ |
 | U6 | 独立 | `packages/llm/llm-deepseek/README.md:54` | 优先级措辞与同表 `:57` 的"win"用法不一致 | E4 | 低 | ⬜ |
-| S1 | 附带 | `AGENTS.md` 目录树 | 树只列 35 组，实际 50 组，缺 17 个 | E4 | 中 | ⬜ |
-| S2 | 附带 | `vendor/README.md:5` vs `:34` | 同一文件自相矛盾 | E4 | 中 | ⬜ |
+| S1 | 附带 | `AGENTS.md` 目录树 | 树只列 35 组，实际 50 组，缺 17 个 | E4 | 中 | ✅ 已修 |
+| S2 | 附带 | `vendor/README.md:5` vs `:34` | 同一文件自相矛盾 | E4 | 中 | ✅ 已修 |
 | S3 | 附带 | `vendor/README.md:11` | 泄漏维护者本机路径 `~/repos/cordis-workspace` | E4 | 低 | ⬜ |
-| S4 | 附带 | `packages/README.md` | 分组总表漏登 `packages/mcp/`（49 行 vs 50 组） | E4 | 低 | ⬜ |
+| S4 | 附带 | `packages/README.md` | 分组总表漏登 `packages/mcp/`（49 行 vs 50 组） | E4 | 低 | ✅ 已修 |
 | S5 | 附带 | `docs/development.md:62` | "Six packages split Host and Client tsconfigs"，实际 8 个 | E4 | 低 | ⬜ |
 | S6 | 附带 | `AGENTS.md:127` vs `docs/testing.md:54` | 快照触发条件两处措辞不一致（少 protocol-visible） | E4 | 低 | ⬜ |
+| S7 | 附带 | `scripts/rescope-vendor.ts:249` | U1 那句话是**门禁生成并强制**的，只改文档会搞红 `rescope-vendor:check` | E4 | 高 | ✅ 实修验证 |
+| S8 | 附带 | `vitest.config.ts:215` | `coverage.exclude` 残留已改名的 `packages/self-modification/`（命中 0 文件） | E4 | 低 | ✅ 实修验证 |
 
 **分组**（已按修订后的根因重排）。⏸️ 下表原为"提 issue 的拆分方案"，因上游不收外部贡献而**暂不执行**；保留是因为这个分组同样是**理解这些缺陷成因的正确方式**，也是将来若改用 Discussions 投递时的现成拆分。
 
@@ -247,6 +250,20 @@ Follow [Get started with the Python SDK](docs/user/guide/python-sdk.md) to insta
 
 这是一份 **implemented**（非 proposed、非 archived）的决策记录。`git blame` 显示 `AGENTS.md:103` 最后一次改动正是 2026-08-10、同一作者——该次改动编辑了这一行，却把 `private: true` 留在了句尾。**这不是可争辩的解读分歧，而是一项有案可查、但未执行完的后续项。** issue 里应当以此开篇。
 
+**精确成因（2026-09-07 实修时补证，比上面更强）**——三个提交、同一作者、两小时内：
+
+| 时间 | 提交 | 做了什么 |
+| --- | --- | --- |
+| 2026-06-11 | `72688a3888` | 首次 vendor。当时 `vendor/cordis/package.json` 是 `name: cordis`（上游名）、`private: true`、**无** `publishConfig`——**文档在这一刻是对的** |
+| 2026-08-10 22:04 | `ec601ca13d` | *"rescope the vendored Cordis packages into @deepseek-ai"*。经 `rescope-vendor.ts` 改写 `AGENTS.md:103`，把 `private: true` 原样带了过去。此刻清单仍是 private，**文档仍然是对的** |
+| 2026-08-11 00:02 | `97eb14a007` | *"make the release set publishable under the private scope"*。**9 个 vendor 清单全部去掉 `private: true`、加上 `publishConfig`**。提交正文明写"Every package under packages/, apps/, and vendor/ drops `private: true`"。**该提交未触及任何文档，也未触及 `rescope-vendor.ts`** |
+
+`git show --stat 97eb14a007 \| grep -E 'AGENTS.md\|README.md\|rescope-vendor'` 返回空——这就是缺陷诞生的确切瞬间：**改清单的提交没有带上改文档的那一步**，而同一作者在两小时前的 note 里已经写下"该约定不再成立"。
+
+（`publishConfig.access` 起初是 `restricted`，由 `a213befd0f`（2026-08-13，*"publish the vendored framework and the native packages publicly"*）改为 `public`；现状实测 9/9 均为 `public`。）
+
+**措辞提示**：和 U4/U7 一样，不要写成"文档写错了"——它写的时候是对的，是 `97eb14a007` 让它失效的。写成"`97eb14a007` 翻转了清单但未同步两处文档与一处 exact-edit 表"最准确，也最容易被接受。
+
 **实际情况**：9 个 `vendor/*/package.json` **全部没有 `private` 字段**，且全部带 `publishConfig: { access: "public" }`：
 
 | 包 | name | private | publishConfig |
@@ -278,7 +295,47 @@ function verifyPublishable(members: readonly ReleaseMember[]): void {
 
 **影响**：高。它会让贡献者误以为 vendored 包不进入发布流程，从而对这些包的版本、`files` 字段、破坏性改动采取错误的谨慎级别。
 
-**建议改法**：`AGENTS.md:103` 删除 "and `private: true`"，可改为 "and published with `publishConfig.access: public`"；`vendor/README.md:34` 将 "added `private: true`" 改为 "added `publishConfig.access: public`"。
+**建议改法（已按 S7 更正——初版药方不完整）**：
+
+1. `scripts/rescope-vendor.ts:249` 把该 exact-edit 的 `replace` 串里的 `` and `private: true`. `` 改掉（例：`and published.`）。**必须先改这里**，否则第 2 步会让 `rescope-vendor:check` 门禁变红。
+2. `AGENTS.md:103` 同步为与上述 `replace` 串逐字一致的文本。
+3. `vendor/README.md:34` 将 "added `private: true`" 改为 "added `publishConfig.access: public`"。
+
+> 初版只写了第 2、3 步。照那样改会直接搞红门禁，是会被维护者一眼打回的疏漏。原因见 S7。
+
+### S7 — `AGENTS.md:103` 的错误措辞是**门禁生成并强制**的，不是陈旧散文（新增，2026-09-07）
+
+在 fork 内实修 U1 时才发现：`AGENTS.md:103` 那句话由 `scripts/rescope-vendor.ts` 的 exact-edit 表写入并校验。
+
+```typescript
+    id: 'root-agents-vendored-name-contract',
+    file: 'AGENTS.md',
+    find: 'vendored packages keep upstream names and are `private: true`. …',
+    replace: 'vendored packages are rescoped ([mapping](docs/rescope.md)) and `private: true`. …',
+    expect: 1,
+```
+
+—— `scripts/rescope-vendor.ts:246-250`。该脚本经 `rescope-vendor:check` 接入门禁（`scripts/run-gates.ts:686`，label `vendor rescope`）。只改 `AGENTS.md` 会立刻得到：
+
+```
+rescope-vendor: exact edit root-agents-vendored-name-contract: AGENTS.md is neither pending nor cleanly applied
+```
+
+**这让 U1 的性质升级了**：不是"某句话忘了更新"，而是**rescope 这个动作本身的定义里带着自相矛盾**——`find`（改名前）说"保留上游名 + `private: true`"是**对的**（保留上游名就不能发布，否则按 `vendor/README.md:5` 的说法会 squat 上游名）；`replace`（改名后）却把 `private: true` 原样抄了过去，而**改名的全部目的正是让这些包可以发布**。矛盾就写在同一个键值对的两侧。
+
+这条独立于 U1 成立，且解释了 U1 为何能存活这么久：它有门禁保护。
+
+### S8 — `vitest.config.ts:215` 残留已改名的 `packages/self-modification/`（新增，2026-09-07）
+
+`coverage.exclude` 数组（行 209–352）内：
+
+```typescript
+        'packages/self-modification/*/src/**/*.{ts,tsx}',
+```
+
+该 glob 命中 **0** 个文件。同一数组的 `:331-332` 已有 `packages/extensions/*/src/**/*.{ts,tsx}`，命中 36 个——**替代项已就位，只是旧行没删**。所以这是死配置而非行为缺陷，与 U2 同属簇①（`a2d0f7f411` 那次改名的遗漏）。
+
+**未在本 fork 修改**：属代码配置而非文档，删除虽是 no-op 但对 fork 无收益，只会抬高合并冲突面。
 
 > **注意：初版的"附带发现"已删除且不要提交。** 初版据 `vendor/cordis/package.json` 是 `4.0.2`、而 manifest 记 `4.0.0-rc.7`，推断该清单"整体已陈旧"。**该推断错误**：这两个数字按设计就不相等。`vendor/README.md:5` 说明 manifest 记的是**上游快照**；`scripts/release/bump.ts:153-161` 的 JSDoc 明写 "a vendor re-sync restores upstream's version, which is lower than the release version this repository already reserved"，即 `package.json` 记的是本仓库自己的发布线。九个包全都因此不等。把这条错误主张放进一个正确的 issue 里，会连累整条的可信度。
 
@@ -452,6 +509,28 @@ grep -n 'protocol-, or human-visible' docs/testing.md                  # 期望�
 ```
 
 ---
+
+## 本 fork 已修复（2026-09-07）
+
+修复时发现**原记录给 U1 开的药方是错的、会搞红门禁**——详见下方 S7。实际改动六个文件：
+
+| 文件 | 改动 | 对应条目 |
+| --- | --- | --- |
+| `AGENTS.md:38` | `self-modification/` → `extensions/` | U2 |
+| `AGENTS.md:49` | `support/` → `test-support/` | U3 |
+| `AGENTS.md:59` | `Package groups:` → `Complete group list:` | S1 |
+| `AGENTS.md:103` | `and `private: true`.` → `and published.` | U1 |
+| `scripts/rescope-vendor.ts:249` | 同步该 exact-edit 的 `replace` 串 | **S7（新）** |
+| `vendor/README.md:34` | `added `private: true`` → `added `publishConfig.access: public`` | U1 / S2 |
+| `packages/README.md` + `.zh.md` + `.i18n.yaml` | 补登 `mcp/` 行（表 49→50 行，与磁盘一致） | S4 |
+
+**为什么 S1 不是"补全 17 组"**：`docs/AGENTS.md:57` 把根 `AGENTS.md` 的字数目标定死在 **≤ 1,950**，而该文件实测正好 **1950/1950，零余量**；同处规则写明 "above target, **freeze the ceiling** until relocation or condensation brings the document under target"，即抬上限是被自己的标准禁止的。补 17 组约需 110 词，无解。且按 one-home-per-fact，完整分组清单的归属地本就是 `packages/README.md`——在 `AGENTS.md` 复述它反而违规。**正确解法是标注树为选列并指向唯一归属地**，这也是该标准列的第 1 条处置方式（Relocate，留一行链接）。
+
+四处改动经设计后**净词数为 0**（U1 的 `-1` 正好抵掉 S1 的 `+1`），`verify-doc-budgets` 仍报 `1950 / 1950` 通过。
+
+**为什么 S4 被一并修掉**：S1 的修法让 `AGENTS.md` 声明"完整清单见 `packages/README.md`"，而那张表自己缺 `mcp/`——不修 S4，S1 的修复就是一句新的假话。`packages/README.md` 在双语配对语料内，故同步改了 `.zh.md` 并用 `pnpm run verify-translation-pairing --write` 重录哈希。
+
+**验证**：`pnpm run test:docs`（doc-quick，15 门禁）全绿；`pnpm run rescope-vendor:check` 全绿；表与磁盘 50 组逐项 `diff` 一致。
 
 ## 在 fork 内修复（当前可做的事）
 

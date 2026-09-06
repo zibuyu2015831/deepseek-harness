@@ -225,7 +225,7 @@ export const Config: z<Config> = z.object({
 | --- | --- |
 | npm 包名 | `@deepseek-ai/dsh-<name>` |
 | 包路径 | `packages/<group>/<pkg>/`，每个包**只属于一个组** |
-| vendored 包 | rescope 为 `@deepseek-ai/*`（映射见 [`docs/rescope.md`](../docs/rescope.md)）<br>⚠️ [`AGENTS.md`](../AGENTS.md) 称其为 `private: true`，但实测 9 个 vendored 包**均无 `private` 字段**，且都带 `publishConfig.access: public`。以 `vendor/*/package.json` 为准 |
+| vendored 包 | rescope 为 `@deepseek-ai/*`（映射见 [`docs/rescope.md`](../docs/rescope.md)）；9 个 vendored 包**均无 `private` 字段**，且都带 `publishConfig.access: public`，即全部公开发布<br>ℹ️ 上游原文曾称其为 `private: true`，本 fork 已于 2026-09-07 修正（见 [`UPSTREAM_DOC_ISSUES.md`](../UPSTREAM_DOC_ISSUES.md) U1/S7）。合并上游时该处可能回退，以 `vendor/*/package.json` 为准 |
 | 类型文件 | `src/types.ts` **只放类型**，不含运行时代码 |
 | 测试位置 | 包级 `tests/`，**不是** `src/__tests__/` |
 | 跨边界 id | 用 `Branded<B>`（`dsh-brand`），不用裸 `string` |

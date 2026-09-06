@@ -243,10 +243,12 @@ const EXACT_EDITS: readonly ExactEdit[] = [
   },
   {
     // The root contract claimed vendored packages keep their upstream names.
+    // Keeping upstream names is what made them private; the rescope is what
+    // makes them publishable, so the applied text must not carry `private`.
     id: 'root-agents-vendored-name-contract',
     file: 'AGENTS.md',
     find: 'vendored packages keep upstream names and are `private: true`. `cordis` is a peerDependency (+ dev) of every harness package.',
-    replace: 'vendored packages are rescoped ([mapping](docs/rescope.md)) and `private: true`. `@deepseek-ai/cordis` is a peerDependency (+ dev) of every harness package.',
+    replace: 'vendored packages are rescoped ([mapping](docs/rescope.md)) and published. `@deepseek-ai/cordis` is a peerDependency (+ dev) of every harness package.',
     expect: 1,
   },
   {

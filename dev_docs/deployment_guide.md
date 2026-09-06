@@ -138,10 +138,11 @@ dist-tag 由版本号形态推导。基类的默认规则是"带 `-` 就打 `nex
 
 ### 3.3 ⚠️ vendored 包的发布状况：以 `vendor/*/package.json` 为准
 
-这里存在一处**上游表述与仓库实际不符**，写发布流程时必须知道：
+这里曾有一处**上游表述与仓库实际不符**，写发布流程时必须知道：
 
-- [`AGENTS.md:103`](../AGENTS.md#conventions) 与 [`vendor/README.md` → Local modifications](../vendor/README.md#local-modifications) 第 2 条都称 vendored 包是 `private: true`。
+- [`AGENTS.md:103`](../AGENTS.md#conventions) 与 [`vendor/README.md` → Local modifications](../vendor/README.md#local-modifications) 第 2 条**原本**都称 vendored 包是 `private: true`。
 - 但 2026-09-06 实测九个 `vendor/*/package.json`：**没有任何一个带 `private` 字段**，且全部声明 `publishConfig.access: "public"`。
+- **本 fork 已于 2026-09-07 修正这两处**（连同 `scripts/rescope-vendor.ts:249`——那句话其实是该脚本生成并由 `rescope-vendor:check` 门禁强制的，只改文档会搞红门禁；详见 [`UPSTREAM_DOC_ISSUES.md`](../UPSTREAM_DOC_ISSUES.md) U1 与 S7）。合并上游时该处可能回退，届时以 `vendor/*/package.json` 为准。
 - 顺带澄清一个**不是**缺陷的现象：`vendor/*/package.json` 的版本高于 [`vendor/README.md` → Manifest](../vendor/README.md#manifest) 表里的版本（如 `cordis` 是 `4.0.2` 而清单记 `4.0.0-rc.7`），这是**设计如此**——清单记的是上游快照，`package.json` 记的是本仓库自己的发布线。`scripts/release/bump.ts` 的 `nextVendorVersion` JSDoc 明写"a vendor re-sync restores upstream's version, which is lower than the release version this repository already reserved"。不要把它当成清单过期。
 - 脚本侧也印证"vendored 包是要发布的"：`VendorFamily` 是一个真实的发布家族，`release:vendor` 是 [`package.json`](../package.json) 里的独立 script，`release:verify` 与 `release:publish` 则是接受 `--family vendor` 参数的通用 script（CI 里的用法见 `.github/workflows/release.yml`），`Release publish (vendor)` 是一条独立工作流。
 
