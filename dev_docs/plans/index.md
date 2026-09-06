@@ -62,7 +62,7 @@ YYYY-MM-DD-<kebab-case-主题>.md
 
 ## 当前计划
 
-_（暂无。新增计划时在此登记一行：`- [标题](active/YYYY-MM-DD-主题.md) — 一句话`）_
+- [阅读能力架构设计](active/2026-09-06-reading-capability-architecture.md) — 把 Web 阅读做成一等能力接缝，含关系模型、包划分与 M1–M8 里程碑
 
 ## 延伸阅读
 

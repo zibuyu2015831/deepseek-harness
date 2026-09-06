@@ -51,7 +51,7 @@ YYYY-MM-DD-<kebab-case-主题>.md
 
 ## 列表
 
-_（暂无。新增时登记一行：`- [标题](YYYY-MM-DD-主题.md) — 一句话`）_
+- [Web 阅读器迁移——讨论上下文与未决问题](2026-09-06-reader-migration-context.md) — 把 ow 阅读器落到 dsh 的评估现场；D1（实体锚点）与 D3（UI 落位）待裁定，阻塞于假设 A1 / A2
 
 ## 延伸阅读
 
