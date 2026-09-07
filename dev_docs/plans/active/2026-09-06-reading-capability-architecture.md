@@ -555,17 +555,27 @@ return { attachment: stored.ref, data: Buffer.from(stored.data).toString('base64
 | --- | --- | --- |
 | 会话列表 | 本文档的全部卡片会话 | `reading-store` 的 `document → sessions` 索引（`SessionResultFilter` 没有 document 轴，§2.1） |
 | 转录 | 当前选中会话的完整视图 | 该会话的日志 |
-| 操作 | 切换 / 清空 / 导出 | 见下 |
+| 操作 | 切换 / 清空 / 导出 | 见下；「清空」已裁定，导出待定（V14） |
 
 **卡片与右栏是同一批会话**（§9.2），只是渲染不同：卡片贴着正文、精简；右栏完整。「转到完整会话」= 在右栏里选中这张卡的会话，**不关闭阅读器**，也不做任何数据搬运。
 
 **转录视图自建。** `ui-chat` 只导出类型与 `apply` / `inject`，没有可复用组件；`conversation` 槽是 `kind: 'single'`，注册即**替换整个对话界面**（[`ui-layout/src/client/index.ts:55-65`](../../../packages/client/ui-layout/src/client/index.ts)），无法嵌套进 overlay。与 §2.5 自建 markdown 渲染臂同性质。
 
-**三个操作的语义必须先定准**（V14）：
+**清空（已裁定）：该卡片改挂一条新会话，旧会话从 `document → sessions` 索引移除。**
 
-- **清空** —— 会话日志是 append-only，**没有清空原语**。它只能是二选一：删除该会话并新建（`handle.dispose()` 会 "stops the loop, unregisters, removes the session"），或触发一次 compaction（历史保留，只是不再进模型）。两者对读者是不同的事，措辞必须对应其一。
-- **保存** —— 会话本就持久（`session-persistence` 落 JSONL），若指持久化则是冗余控件。它应当只意味着导出。
-- **导出为文档** —— 从会话日志渲染 markdown，自建。
+读者得到的是一张空白的卡片，旧对话从右栏列表与卡片里彻底消失、不可再达。
+
+**它不删除磁盘记录，因此这个控件不能叫「删除」。** dsh **没有删除会话的 API**，三条已查实：
+
+- `dispose()` 的拆解顺序是「stop-and-drain the loop, unwind the scope, detach the agent, **detach the session**」（[agent README](../../../packages/core/agent/README.md)）——detach 是从内存注册表摘掉，磁盘 JSONL 不动。
+- `session-persistence-jsonl` 里唯一的 `rm()` 是迁移暂存文件的清理（[`generation.ts:514`](../../../packages/session/session-persistence-jsonl/src/generation.ts)），不是会话删除。
+- `SessionAvailability` 只有 `'live' | 'persisted'`（[session-query.md](../../../docs/subsystems/session-query.md)），没有 archived 或 deleted 态；`ui-workspace` 提供的 archive 是 workspace 层动作。
+
+且 [根 AGENTS.md](../../../AGENTS.md) 对已发布 Session JSONL 的规则是 *never move, overwrite, or delete committed generations*。越过 `session-persistence` 自行删文件既绕过所有者又撞该规则，**不做**。
+
+⇒ 「清空」是准确的措辞：它承诺视图被清空，不承诺磁盘。旧 JSONL 成为一条不可达记录，记入已知限制（§11）。
+
+**保存 / 导出（V14 余项）** —— 会话本就持久（`session-persistence` 落 JSONL），「保存」若指持久化则是冗余控件，应当只意味着导出为 markdown。导出自建，从会话日志渲染。**待裁定：是否保留「保存」这个独立控件，还是只留「导出」。**
 
 **放弃的备选**：fork `ui-layout` 增第四栏——产品形态更好，但持续承担上游合并成本。**推迟到接管形态被实际使用否决之后再考虑**，不预支。
 
@@ -697,6 +707,7 @@ dock 在专注模式下整体消失（含每一个入口），与 ow 一致。
 - **自有 markdown 渲染臂意味着自担安全策略**。`MarkdownText` 的白名单（协议白名单、原始 HTML 字面化、KaTeX 无信任命令）必须**逐条复刻**，本地图片是唯一有意放开的口子，且只经 §7.4 的 `@Remote asset()`——浏览器永不直接拿到本地路径，且服务端必须做引用校验。
 - **不能新增持久会话事件类型**（§2.6）。这不是本设计的选择，是仓外插件的结构性约束。任何「给会话加一个新的durable事实」的需求，都只能搭载在已知事件的载荷里，或接受该会话在原生 dsh 中无法重载。
 - **锚点在文档被大改时会 `lost`**。孤儿标注保留、可见、不自动删除。
+- **「清空」不删磁盘记录**（§8）。dsh 没有删除会话的 API，被清空的卡片会话其 JSONL 留在磁盘上，成为一条产品界面无法再抵达的记录。长期使用会累积；若日后需要真正的清理，那是一条独立的、由 `session-persistence` 所有者提供的删除路径，不是我们能越过它做的事。
 - **每条卡片会话可能触发标题生成**（§9.3 三）。`session-title-*-llm` 按 cadence 发辅助模型调用，20 张卡就是 20 次额外调用。自有 profile 里可关可改，但必须显式决定，不能默认带过来。
 - **会话数等于卡片数**（§9.3 二）。这是 §4.4 的选项乙。三条缓解（阅读期侧栏不可见、右栏列表按文档过滤、可摘 `ui-workspace`）都在 §9.3，第三条有连带代价，记为 V13。
 - **卡片之间互不可见**。各自一条会话，卡片 B 引用不到卡片 A 的结论。这是卡片独立的直接后果，不是缺陷。
@@ -719,11 +730,11 @@ dock 在专注模式下整体消失（含每一个入口），与 ow 一致。
 | **M5** | 锚点 | 外部改文档后重开，书签仍在正确位置或被标记为孤儿 | 无标注 UI |
 | **M6** | 助读卡片与追问 | 划词 → 点动作 → 看见流式回答；**在同一张卡里追问，回答引用得到前一轮**；关掉浏览器重开，卡片连同全部轮次重建；带 `reading-selection`（含 `card`）来源的消息落日志、投影可见；**该会话在原生 dsh 里仍能打开** | 无 dock、无多卡片、无右栏 |
 | **M7** | 多卡片、停放与右栏 | 多卡片并存与级联；**两张卡同时流式互不阻塞**；拖到左槽停靠成 capsule、点击复原、向右弹出、dock 内重排；overlay 下收成计数 tab；专注模式整体消失；**扣住响应证明停放期间流不中断**；右栏列出本文档全部会话、可切换、可导出；**V13 已裁定并落实** | 无标注 |
-| **M8** | 标注 + 索引 invariant | 划词加批注并持久；`document → sessions` 索引的 invariant 通过（含一次人为漂移后的重建）；右栏的清空 / 导出按 V14 裁定的语义落实 | — |
+| **M8** | 标注 + 索引 invariant | 划词加批注并持久；`document → sessions` 索引的 invariant 通过（含一次人为漂移后的重建）；右栏「清空」可用（旧会话移出索引、卡片挂上新会话、旧对话不可再达），导出按 V14 余项裁定的语义落实 | — |
 
 > **V9 裁定「一张卡一条会话」之后，V2 随之落定为选项乙**（§4.4）：一个文档的会话数等于卡片数，不再有「常驻会话」这个概念，也没有 fork 入口。乙原本的弱点（列表淹没）由 §9.3 的三条缓解承担，其中第三条记为 **V13，阻塞 M7**。
 >
-> **右栏的清空 / 保存 / 导出语义记为 V14**（§8），阻塞 M8 的对应验收，不阻塞 M6–M7 的右栏骨架。
+> **右栏「清空」的语义已定**（§8）；**保存 / 导出的余项记为 V14**，阻塞 M8 的对应验收，不阻塞 M6–M7 的右栏骨架。
 
 **判据 3（模型可用）在 M6 之后由 `dsh-tool-documents` 兑现，不占里程碑**——它是接缝设计的验证：加它不应触碰前面任何一个包。
 
@@ -741,7 +752,7 @@ dock 在专注模式下整体消失（含每一个入口），与 ow 一致。
 | **V9** | 助读卡片是调用还是会话 | **已裁定（2026-09-07）** | **一张卡就是一条会话**（`ctx.agents.create`，卡片专属最小组合）。得到追问连续、刷新可重建、工具可用、Agent 与记忆系统可见，并且**「升级」机制整个不再产生**；代价三条见 **§9.3**。memo D2「助读进会话日志 ⇒ 记忆系统可直接读日志」的理由成立 |
 | **V12** | 卡片会话的首字延迟与跨卡前缀缓存 | 未测 | `ctx.agents.create()` + 一次 turn 对比裸补全的 TTFT；以及卡片 agent 组合相同时，供应商侧前缀缓存能否跨会话命中。已知量：`text-turn` profile 系统提示词 4,712 B + 工具 schema 36,003 B ≈ 40.7 KB，`agent-instructions` 达 82.6 KB（录制快照实测）。不阻塞里程碑，影响是否需要为开场动作做优化 |
 | **V13** | 是否摘掉 `ui-workspace` | **已查实可行，待裁定** | 摘掉即消除全局列表污染。**代价**：`uiWorkspace` 是 `ui-sidebar` / `ui-directory-picker-native` / `ui-directory-picker-browse` / `ui-agent-preset` 四者的硬注入依赖 ⇒ 连带停掉侧栏外壳与两个目录选择器，§7.1 的复用随之作废，须自建目录选择器。其余引用是 `import type {}`，纯编译期。**阻塞 M7** |
-| **V14** | 右栏「清空 / 保存 / 导出」的语义 | 未裁定 | 会话日志 append-only，**无清空原语**：只能是「删除并新建」或「触发 compaction」，二者对读者不同。「保存」若指持久化则冗余，应只作导出。见 §8。**阻塞 M8 的对应验收** |
+| **V14** | 右栏「清空 / 保存 / 导出」的语义 | **清空已裁定（2026-09-07），保存/导出待裁定** | **清空 = 该卡改挂新会话 + 旧会话移出 `document → sessions` 索引**。已查实 dsh **没有删除会话的 API**（`dispose()` 只 detach、无 archived 态、JSONL 规则禁止删除已提交 generation），所以旧记录留在磁盘成为不可达记录，控件因此不叫「删除」。余项：是否保留独立的「保存」控件还是只留「导出」。见 §8。**余项阻塞 M8 的对应验收** |
 | V10 | 卡片重建的保真度 | 未查 | 刷新后按 `document → sessions` 索引重建卡片，轮次来自会话日志、位置来自 `reading-store`，但视口可能已变。是照搬旧坐标再钳制，还是按当前视口重新级联？影响 M6 的重建验收 |
 | V6 | 大文档（>1MB）的分窗策略与 `streamText` 的配合 | 未查 | 实测 |
 | **V7** | 阅读会话在原生 dsh 中的降级观感 | **已查实** | **优雅降级**：未知 `source.kind` 走 `contextProvenance` 的文档化默认 `{ role: 'inject', label: kind }`，显示为标着 `reading-selection` 的注入上下文。**附带发现**：非 `'user'` 来源一律归为 `context` 节点 ⇒ 助读须拆成两条消息，见 §7.2 |
