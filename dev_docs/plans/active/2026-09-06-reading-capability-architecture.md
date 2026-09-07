@@ -1,9 +1,9 @@
 ---
 title: 阅读能力架构设计
-summary: 把「Web 阅读」作为 dsh 的一等能力落地的架构设计：文档访问接缝 ctx.documents 的三角角色、document ↔ session 双向关系的两套机制（会话投影 + 可重建索引）、锚点与阅读状态的归属、UI 在 shell.overlay 的落位、六个包的划分与里程碑。
-keywords: reading | documents | 阅读器 | capability-seam | session-projection | shell.overlay | anchor | message-source | 架构设计
+summary: 把「Web 阅读」作为 dsh 的一等能力落地的架构设计：文档访问接缝 ctx.documents 的三角角色、document ↔ session 双向关系的两套机制（会话投影 + 可重建索引）、锚点与阅读状态的归属、助读卡片的追问与停放模型、UI 在 shell.overlay 的落位、六个包的划分与里程碑。
+keywords: reading | documents | 阅读器 | capability-seam | session-projection | shell.overlay | anchor | message-source | 助读卡片 | dock | 停放 | 追问 | 右栏 | 架构设计
 scope: 本 fork 派生产品中「阅读」能力的架构设计与实施计划
-related_files: docs/subsystems/session-projection.md | docs/subsystems/session-query.md | docs/subsystems/persistence.md | docs/subsystems/storage.md | docs/subsystems/slots.md | docs/subsystems/filesystem.md | packages/core/session/src/known-event-types.ts | packages/session/session-persistence/src/storage-contract.ts | packages/client/ui-layout/src/client/index.ts | packages/client/ui-primitives/src/markdown/render.tsx | packages/client/web/src/platform.ts | packages/api/session-controller/src/commands.ts
+related_files: docs/subsystems/session-projection.md | docs/subsystems/session-query.md | docs/subsystems/persistence.md | docs/subsystems/storage.md | docs/subsystems/slots.md | docs/subsystems/filesystem.md | packages/core/session/src/known-event-types.ts | packages/core/agent/src/inbox.ts | packages/session/session-persistence/src/storage-contract.ts | packages/session/session-title-llm/src/index.ts | packages/llm/llm/src/types.ts | packages/client/ui-layout/src/client/index.ts | packages/client/ui-primitives/src/markdown/render.tsx | packages/client/web/src/platform.ts | packages/api/session-controller/src/commands.ts
 dependencies: dev_docs/memos/2026-09-06-reader-migration-context.md | dev_docs/AI_Coding_Context.md | dev_docs/rules/combined/AI_RULES.md
 verified_at: 2026-09-07
 ---
@@ -28,15 +28,18 @@ verified_at: 2026-09-07
 | 图片交付 | `@Remote` 走已鉴权的 `/api`，**不建 HTTP 路由**；必须做引用校验 | §7.4 |
 | 客户端构建 | `dsh.client.platform: 'web'` + `./client`，Host 自动扫描供给 | §6 |
 | 包划分 | v1 六个包，`tool-documents` 等三项延后 | §6 |
-| v1 范围 | 只读、只支持 md/txt、只搬 `LocalReader`、放弃 URL 路由 | §10 |
+| v1 范围 | 只读、只支持 md/txt、只搬 `LocalReader`、放弃 URL 路由 | §11 |
+| 助读卡片 | **一张卡就是一条会话**（`ctx.agents.create`，卡片专属最小组合）：追问 = `followup()`，卡片之间独立并发；内容在会话日志，停放状态在 `reading-store` | §7.2、§9.2 |
+| 右栏 | 阅读界面内自建右栏：本文档的会话列表 + 完整转录。「转到完整会话」是换渲染，不是升级 | §8 |
 
 **未定，阻塞实施**：
 
 | | 问题 | 阻塞 |
 | --- | --- | --- |
-| **V2** | 阅读会话的生命周期：甲每文档一条 / 乙每次新建 / 丙常驻+fork | **M6**。分析已完成见 §4.4，倾向丙，**待产品裁定** |
+| **V13** | 是否摘掉 `ui-workspace` 以避免全局会话列表被卡片会话淹没 | **M7**。摘掉可行但会连带停掉侧栏外壳与两个目录选择器（硬注入 `uiWorkspace`），§7.1 的复用随之作废 ⇒ 须自建目录选择器。三条缓解见 §9.3 |
+| V12 | 卡片 agent 的首字延迟与跨卡前缀缓存命中 | **不阻塞**，但影响卡片是否需要「开场走裸补全」的优化。实测见 §9.3 一 |
 
-其余未决（V6 大文档分窗、V8 节点定义优先级）见 §12，均不阻塞 M1。
+其余未决（V6 大文档分窗、V8 节点定义优先级、V10 卡片重建保真度）见 §13，均不阻塞 M1。
 
 ---
 
@@ -251,7 +254,7 @@ ctx.sessionQuery.filterSessions([...])                                    // 全
 
 ### 4.3 由此得到的产品语义
 
-- 每个附着文档的会话都在文档的会话列表里，**无论它是划词助读还是深度长谈**。
+- 每个附着文档的会话都在文档的会话列表里——右栏那个列表（§8）就是它。
 - 「多个 session 关于同一个文档」不是被实现出来的，是**从机制里掉出来的**。
 - 阅读状态（位置/书签/标注）不进会话日志，**生命周期彻底独立于 session**——判据 1 成立。
 - 会话在原生 dsh 里**可以正常打开**（§4.2 已核实）：它只是一批普通 `user/message`，`source.kind` 不被识别时退化为一个未知来源标签，对话本身完整可读、可续。
@@ -260,7 +263,7 @@ ctx.sessionQuery.filterSessions([...])                                    // 全
 
 ### 4.4 阅读会话的生命周期（**V2，未裁定**）
 
-> **状态：待产品裁定。** §4.2 定义了「会话属于哪个文档」，本节回答**一个文档该有几个会话、它们何时被创建**。下面记录已查实的边界事实、三个选项的完整比较、当前倾向与其代价。**尚未决定，M6 之前必须定。**
+> **状态：已随 V9 落定为选项乙**（§9.2）——一张助读卡片就是一条会话，所以一个文档的会话数等于卡片数。本节保留三个选项的完整比较，因为它记录的边界事实与代价仍然是判断依据；乙那一列的弱点（列表淹没）改由 §9.3 的三条缓解承担，而不是靠改选甲或丙回避。
 
 #### 框定选项空间的三条事实
 
@@ -270,33 +273,32 @@ ctx.sessionQuery.filterSessions([...])                                    // 全
 
 #### 三个选项
 
-| | 甲：每文档一条常驻 | 乙：每次划词新建 | 丙：一条常驻 + 显式 fork 深度会话 |
+| | 甲：每文档一条常驻 | **乙：每张卡一条（已采纳）** | 丙：一条常驻 + 显式 fork 深度会话 |
 | --- | --- | --- | --- |
-| 会话数 | = 文档数 | **爆炸**（读一本书可达 50+） | 1 + N，N 由用户显式创建 |
-| 列表可读性 | 好 | **被淹没**，且无法隐藏（事实 1） | 好，且有父子层级 |
-| 上下文连续性 | 连续：第 20 次提问能引用第 3 次的结论 | 每次冷启动，无上下文 | 常驻连续；fork 继承到分叉点 |
-| KV cache | 前缀稳定，命中率高 | **每次重建，成本最高** | 同甲 |
-| 压缩影响 | 会话会长，早期划词迟早被压缩掉 | 不涉及 | 常驻会长（可接受）；深度会话短，不触发 |
+| 会话数 | = 文档数 | = 卡片数（读一本书可达 20+） | 1 + N，N 由用户显式创建 |
+| 列表可读性 | 好 | **会被淹没**（事实 1），靠 §9.3 三条缓解 | 好，且有父子层级 |
+| 卡内连续性 | 连续 | **连续**（追问 `followup()` 进同一条） | 连续 |
+| 跨卡连续性 | 有：第 20 张能引用第 3 张 | **无**（这正是卡片独立的定义） | 常驻内有；fork 继承到分叉点 |
+| 并发 | **否**（串行 driver，多卡排队） | **是**（独立 agent） | 否 |
+| KV cache | 一条长前缀，命中率高 | 逐卡追加式前缀；跨卡若组合相同，供应商侧前缀缓存或可命中（V12） | 同甲 |
+| 压缩影响 | 会话会长，早期划词迟早被压缩掉 | 单卡短，通常不触发 | 常驻会长；深度会话短 |
 | 父子关系 | — | — | **`parentSession` 白送，可 `filterSessions` 直查** |
 
-#### 当前倾向：丙
+#### 为什么最终是乙
 
-三条具体理由，不是折中：
+乙原本被否的唯一理由是列表淹没（事实 1）。V9 把卡片做成会话之后，这条理由有了三条独立于会话机制的缓解（§9.3 二）：阅读接管期侧栏不可见、右栏列表按文档过滤、独立产品可摘 `ui-workspace`。而选甲或丙要付的代价是把多张卡片挤进一条会话——那会让卡片彼此可见、彼此串行，正好抵消卡片这个交互形态的全部价值。
 
-1. **化解甲的压缩焦虑**。常驻会话定位为「划词流水」，早期内容被压缩可以接受；真正值得留存的思考在 fork 出的深度会话里，那些会话短、不触发压缩。
-2. **把会话数交还给用户**。每条深度会话都是显式「展开为独立会话」的产物，所以列表里每一条都有意义；乙的 50 条里有 49 条是噪音。
-3. **父子关系走 dsh 的一等机制**。我们的索引只回答「哪些会话附着这个文档」，「这条从哪儿分出来」由 `parentSession` 承担。**少维护一份数据就少一份会腐烂的数据**——与 §4.1 否决 `documentRegistry` 是同一条理由。
-
-#### 丙的代价（明写）
-
-- **fork 是有约束的操作**，不是随手调用：需要 `inheritedEventCount` 精确切分、`meta.isSeeded: true`，且 `seed` 必须**恰好等于**继承前缀——构造器会在切点追加子会话自有的 end-seed 标记（[persistence.md](../../../docs/subsystems/persistence.md#createsessionoptions--seeding-and-metadata)）。落在 M8，前面的里程碑不碰。
-- **多了一个用户需要理解的概念**（常驻 vs 深度）。若实测发现用户从不用「展开」，丙就退化成甲，那时删掉 fork 入口即可——**这个方向的退化是无损的**，反过来（从乙收敛回丙）则需要迁移已产生的大量会话。这是选丙而非选乙的一个额外安全边际。
+丙的 fork 机制因此不进 v1。若日后需要「把某张卡的讨论另存一份」，`ctx.agents.create({ seed, inheritedEventCount, meta: { isSeeded: true, parentSession } })` 仍然可用，且 `SessionResultFilter` 的 `{ kind: 'parent' }` 让父子关系不需要我们维护索引。
 
 #### 延伸问题（不阻塞 M1–M8）
 
-常驻阅读会话的**压缩策略**。dsh 有 compaction 接缝，阅读流水可能需要比对话更激进的压缩，或者「读完一本归档并新建」。等实际用起来产生真实的长会话之后再定，不预设。
+**卡片会话的压缩策略。** 一张卡追问几十轮后会变长。dsh 有 compaction 接缝，但阅读场景下「压缩掉早期追问」的可接受度未知。等真实长卡片出现后再定，不预设。
 
-`ctx.documents` 的类型面。**这是本设计里唯一需要一次想对的东西**——它同时是阅读界面、存储层和未来模型工具的共同语言。
+---
+
+## 5. `ctx.documents` 的类型面
+
+**这是本设计里唯一需要一次想对的东西**——它同时是阅读界面、存储层和未来模型工具的共同语言。
 
 ### 5.1 标识
 
@@ -310,7 +312,7 @@ ctx.sessionQuery.filterSessions([...])                                    // 全
 type DocumentId = Branded<'DocumentId'>
 ```
 
-**取舍（明写）**：`workspace` 选 uuid 而非路径，理由是「路径规范化会重写路径，而引用锚点必须稳定」。文档这里**反向选择**——用路径派生标识，换掉整个注册表。代价是**重命名/移动会断开关系**。v1 接受，记入已知限制；修复路径见 §10。
+**取舍（明写）**：`workspace` 选 uuid 而非路径，理由是「路径规范化会重写路径，而引用锚点必须稳定」。文档这里**反向选择**——用路径派生标识，换掉整个注册表。代价是**重命名/移动会断开关系**。v1 接受，记入已知限制；修复路径见 §11。
 
 ### 5.2 内容与结构
 
@@ -418,10 +420,10 @@ interface Documents {
 | --- | --- | --- |
 | `dsh-documents` | **Service Definition** | `ctx.documents` + §5 全部类型 + 提供方注册表。**不做 IO。** |
 | `dsh-documents-local` | **Service Provider** | 本地文件系统实现，全部经 `ctx.fs`。md/txt 解析、标题 resolve、大纲抽取、锚点重定位、目录列举、图片字节。 |
-| `dsh-reading-store` | 持久数据形态 | storage domain：位置 / 书签 / 标注 / 最近打开 + `document → sessions` 索引。**发布 `./invariant`**（§4.2）。 |
-| `dsh-reading-session` | **Consumer**（会话侧） | 拥有 `reading-selection` 的 `MessageSourceMap` 扩展、`reading` 投影单元、系统提示词段、面向客户端的 `@Remote` 方法（含 §7.4 的资源读取）。**不新增会话事件类型**（§2.6）。 |
+| `dsh-reading-store` | 持久数据形态 | storage domain：位置 / 书签 / 标注 / 最近打开 / **卡片的表现状态**（位置、停放、dock 顺序）+ `document → sessions` 索引。**发布 `./invariant`**（§4.2）。卡片的轮次不在这里，在会话日志。 |
+| `dsh-reading-session` | **Consumer**（会话侧） | 卡片会话的创建与驱动（`ctx.agents.create` + 卡片专属 `setup` 组合、`followup`）、面向客户端的 `@Remote` 方法（含 §7.4 的资源读取）。拥有 `reading-selection` 的 `MessageSourceMap` 扩展（含 `card` 字段）、`reading` 投影单元、系统提示词段。**不新增会话事件类型**（§2.6）。 |
 | `dsh-client-ui-reading` | **Consumer**（界面） | `shell.overlay` 占位者：书库 / 文件树 / 阅读视图 / 大纲 / chrome / 键位 / 自有 markdown 渲染臂。 |
-| `dsh-client-ui-reading-assist` | **Consumer**（界面） | 选区模型、动作菜单、助读窗口与 dock。 |
+| `dsh-client-ui-reading-assist` | **Consumer**（界面） | 选区模型、动作菜单、助读卡片（几何、级联、视口钳制、追问框）、停放 dock，以及**右栏**：本文档的会话列表、完整转录、切换 / 清空 / 导出（§8、§9）。 |
 
 ### 延后的拆分
 
@@ -472,17 +474,22 @@ interface Documents {
 
 ```
 界面：选区 → DocumentAnchor + excerpt + action
-  → @Remote assist({ document, anchor, excerpt, action, question? })
+  → @Remote assist({ card, document, anchor, excerpt, action, question? })
 reading-session：
-  ① 取或建「该文档的阅读会话」（ctx.agents；生命周期见 V2）
+  ① 取或建「这张卡片的会话」（ctx.agents.create，带卡片专属的最小组合；§9.2）
   ② append 两条 user/message，顺序照 dsh 自己的 [...claimed, context] 惯例：
      a. 用户的提问或动作文本  → source.kind: 'user'
      b. 选中的原文 + 定位     → source.kind: 'reading-selection'   ← 投影来源
-  ③ 正常 turn，模型可用全套工具
+  ③ 正常 turn
   ④ 流式结果经既有 session/event 推送回界面
+追问：同一张卡再问 → handle.agent.followup()，进同一条会话
 ```
 
-**为什么拆成两条**（V7 查证的结果）：`ui-chat` 的 `messageDefinition` 在 [`message.ts:55`](../../../packages/client/ui-chat/src/client/conversation-nodes/message.ts) 判 `source.kind !== 'user'` 就归为 **`context` 节点**（"Non-user context injected into model history"）。若把提问也塞进 `reading-selection` 一条里，它在任何 dsh 客户端里都会被渲染成"注入的上下文"而不是用户发言——**语义错了**。拆开之后：提问在哪都是正常的用户气泡，原文在哪都是注入上下文，与 dsh 对这两件事的既有建模完全一致。
+**一张卡就是一条会话**（§9.2）。所以追问天然连续、刷新天然可重建、Agent 天然看得见——都不需要额外机制。「转到完整会话」不是升级，是**把这条会话在右栏里换一种渲染**（§8）。
+
+**卡片 agent 用最小组合。** `ctx.agents.create({ setup })` 让每个 agent 拥有自己的作用域工具与提示词段（[agent README](../../../packages/core/agent/README.md)）。卡片 agent 只带阅读相关工具，不带 shell / fs 写 / subagent。**依据**：录制快照实测，`text-turn` profile 的系统提示词 4,712 字节 + 工具 schema 36,003 字节 ≈ 40.7 KB，`agent-instructions` 达 82.6 KB；若卡片 agent 继承完整组合，每张卡都背这份前缀。
+
+**为什么拆成两条消息**（V7 查证的结果）：`ui-chat` 的 `messageDefinition` 在 [`message.ts:55`](../../../packages/client/ui-chat/src/client/conversation-nodes/message.ts) 判 `source.kind !== 'user'` 就归为 **`context` 节点**（"Non-user context injected into model history"）。若把提问也塞进 `reading-selection` 一条里，它在任何 dsh 客户端里都会被渲染成"注入的上下文"而不是用户发言——**语义错了**。拆开之后：提问在哪都是正常的用户气泡，原文在哪都是注入上下文，与 dsh 对这两件事的既有建模完全一致。
 
 **降级观感已核实**：未知 `source.kind` 落到 [`event-projection.ts:73-76`](../../../packages/client/ui-chat/src/client/conversation-nodes/event-projection.ts) 的文档化默认——
 
@@ -495,9 +502,11 @@ default:
 
 ⇒ 原生 dsh 里显示为一条标着 `reading-selection` 的注入上下文，**可见、可读、不报错**。我们自己的产品用 `ctx.uiConversation.events.register()` 注册专属节点定义，把这一对渲染成一张阅读卡片。
 
-**「模型可见 ⟺ 已记录」检查**：进入模型请求的是 excerpt（在消息内容里）与文档标题（在系统提示词段里）。两者都在同一条 `user/message` 里落盘——excerpt 在 `content`，标题在 `source.title`。✓
+**「模型可见 ⟺ 已记录」检查**：进入模型请求的是提问、excerpt（都在消息内容里）与文档标题（在系统提示词段里），全部落在同一条 `user/message` 里——内容在 `content`，标题在 `source.title`。✓ 卡片走真实 turn，这条规则原样适用、原样满足。
 
-**KV cache 检查**：文档正文**绝不进系统提示词**。系统段只含稳定的「用户正在阅读《标题》」——一个会话绑一个文档，该段在会话生命周期内不变 ⇒ 前缀稳定。选区以追加消息进入 ⇒ 天然缓存友好。（依据：实测该 Web 会话缓存命中 89%，注入策略必须保住它。）
+**KV cache 检查**：文档正文**绝不进系统提示词**。系统段只含稳定的「用户正在阅读《标题》」——一张卡绑一个文档，该段在会话生命周期内不变 ⇒ 前缀稳定；追问以追加消息进入 ⇒ 同一张卡天然缓存友好。（依据：实测该 Web 会话缓存命中 89%，注入策略必须保住它。）
+
+**跨卡前缀**：不同卡片是不同会话，但若卡片 agent 的组合相同，它们的系统提示词与工具 schema **逐字节相同** ⇒ 供应商侧的前缀缓存仍可命中这一段。**未实测**，记为 V12 的一部分。
 
 ### 7.3 标注
 
@@ -535,8 +544,28 @@ return { attachment: stored.ref, data: Buffer.from(stored.data).toString('base64
 
 **代价（明写）**：它覆盖三栏（含侧栏），是**阅读模式接管**，不是与对话并列的第四栏。因此：
 
-- **两级助读**。轻量层：阅读器内的助读卡片/dock，短问答，自有精简 transcript（ow 的 `AssistWindow` 证明这是不同的交互，不是对话的缩水版）。深度层：「转到完整会话」——关闭阅读器接管，落到常规 `conversation` 外壳。两者**是同一批会话**（§4.3），只是呈现不同。
-- 侧栏在接管期不可见 ⇒ 阅读器需自带返回入口。
+- 侧栏在接管期不可见 ⇒ 阅读器需自带返回入口。**附带好处**：卡片会话不会在阅读期出现在全局列表里（§9.3 缓解一）。
+- **overlay 内部的布局完全由我们定**（`.overlayLayer` 铺满 `.frame` 并自行接管指针事件，§2.3），所以右栏是自建的，不占用 dsh 的任何槽位。
+
+### 右栏：同一批会话的另一种渲染
+
+阅读界面内自建右栏，承载三件事：
+
+| | 内容 | 来源 |
+| --- | --- | --- |
+| 会话列表 | 本文档的全部卡片会话 | `reading-store` 的 `document → sessions` 索引（`SessionResultFilter` 没有 document 轴，§2.1） |
+| 转录 | 当前选中会话的完整视图 | 该会话的日志 |
+| 操作 | 切换 / 清空 / 导出 | 见下 |
+
+**卡片与右栏是同一批会话**（§9.2），只是渲染不同：卡片贴着正文、精简；右栏完整。「转到完整会话」= 在右栏里选中这张卡的会话，**不关闭阅读器**，也不做任何数据搬运。
+
+**转录视图自建。** `ui-chat` 只导出类型与 `apply` / `inject`，没有可复用组件；`conversation` 槽是 `kind: 'single'`，注册即**替换整个对话界面**（[`ui-layout/src/client/index.ts:55-65`](../../../packages/client/ui-layout/src/client/index.ts)），无法嵌套进 overlay。与 §2.5 自建 markdown 渲染臂同性质。
+
+**三个操作的语义必须先定准**（V14）：
+
+- **清空** —— 会话日志是 append-only，**没有清空原语**。它只能是二选一：删除该会话并新建（`handle.dispose()` 会 "stops the loop, unregisters, removes the session"），或触发一次 compaction（历史保留，只是不再进模型）。两者对读者是不同的事，措辞必须对应其一。
+- **保存** —— 会话本就持久（`session-persistence` 落 JSONL），若指持久化则是冗余控件。它应当只意味着导出。
+- **导出为文档** —— 从会话日志渲染 markdown，自建。
 
 **放弃的备选**：fork `ui-layout` 增第四栏——产品形态更好，但持续承担上游合并成本。**推迟到接管形态被实际使用否决之后再考虑**，不预支。
 
@@ -544,12 +573,107 @@ return { attachment: stored.ref, data: Buffer.from(stored.data).toString('base64
 
 ---
 
-## 9. 与仓库规则的逐条自查
+## 9. 助读卡片：一张卡就是一条会话
+
+> §7.2 给出数据流。本节定义卡片的归属、并发、停放与右栏的关系。
+>
+> ow 侧事实一律标注 `文件：行`，以 `/Users/zibuyu/code/zibuyu/open-writer` 为准；dsh 侧事实标注仓内路径。
+
+### 9.1 ow 现状：它不是会话，是 N 次一次性请求
+
+**卡片的诞生与冻结。** 划词先弹 ephemeral trigger（动作条）；点动作才 spawn 一张 persistent card。card 在 spawn 时冻结 `selection` / `bookId` / `chapterId` / `initialAction` / `sourceLabel`，此后自足——翻页、切章都不影响它继续浮着（`assist-windows.ts:99-122`）。`sourceLabel` 在本地阅读器里是**文件 basename 而非绝对路径**，理由写在注释里：capsule 会出现在读者截的每一张图的边上。
+
+**动作分两组七项**：`translate` / `explain` / `grammar-en` / `lecture`（理解）与 `fix` / `polish` / `rephrase`（修改），外加不是按钮的自由提问 `ask`。每项声明 `contextMode: 'none' | 'neighbor' | 'wide'`，客户端按档取选区邻域，服务端按档二次截断（2400 / 24000 字符）。
+
+**三条实测事实：**
+
+| | 事实 | 出处 |
+| --- | --- | --- |
+| 1 | **卡内无连续性。** 请求体只有 `{actionId, selectedText, context, userPrompt, uiLang, bookId, chapterId}`，**不带任何历史轮次**；服务端每次 `buildAssistMessages(id, input)` 从零拼 messages。同一张卡的第 3 轮看不见第 1 轮，`state.turns` 只是客户端显示历史 | `AssistWindow.tsx:250-265`、`actions.ts:454` |
+| 2 | **不持久。** assist 相关文件无任何 `localStorage` / `sessionStorage`。刷新 = 20 张卡连同全部答案消失 | 全量 grep 零命中 |
+| 3 | **模型看不到文档，也用不上工具。** `AssistRunner` 只有 `streamChat` / `chat` 两个方法，没有 agent 循环 | `assist/types.ts:33-39` |
+
+三条都是本设计要修掉的。卡片**彼此独立**这一点保留。
+
+### 9.2 归属模型：一张卡就是一条会话
+
+**结论（V9 已裁定）：每张助读卡片对应一条独立会话，由 `ctx.agents.create()` 创建。**
+
+```
+卡片 X（80.md 第 2 段）  ←→  会话 X
+├─ user  「翻译」                      source.kind: 'user'
+├─ user  锚点 + 引文                   source.kind: 'reading-selection'  ← 投影来源
+├─ assistant  Li Jia sat surrounded…
+├─ user  「为什么用 perched」          ← followup()，同一条会话
+└─ assistant  …                        ← 看得见上面全部
+
+卡片 Y（80.md 第 50 段）←→ 会话 Y   （独立 agent，与 X 并发）
+```
+
+一张卡片的**内容**（全部轮次）住在会话日志里；一张卡片的**表现**（位置、停没停、dock 顺序）住在 `reading-store`。两者归属分明，各有唯一的家。
+
+**这样成立的六件事：**
+
+| | ow | 本设计 |
+| --- | --- | --- |
+| 卡片之间 | 独立 | **独立**（各自一条会话、一个 agent） |
+| 卡内追问 | 第 3 轮看不见第 1 轮 | **连续**（同一条会话日志） |
+| 刷新后 | 20 张卡连答案一起丢 | **可重建**（会话是持久的） |
+| 并发 | 多卡同时流式 | **多卡同时流式**（独立 agent，§9.4） |
+| 工具 | 用不上 | **可用**（真实 turn，工具集由卡片 agent 的组合决定） |
+| Agent / 记忆系统可见 | 否 | **是**（全在会话日志里） |
+
+**「转到完整会话」是换渲染，不是搬数据。** 卡片的会话与右栏里的会话**是同一条**：卡片是贴着正文的精简视图，右栏是完整转录。该动作只改变哪个视图在渲染它，不写入任何事件。
+
+**`reading-selection` 携带 `card`**，与 `document` / `anchor` / `excerpt` 并列，用于把会话与发起它的卡片对上。§4.2 的投影照常工作：一条会话属于哪个文档，仍是首条 `reading-selection` 消息的函数。
+
+### 9.3 裁定 V9 的代价（明写）
+
+**一、每张卡是一条真实会话，不是一次调用。** 一个 agent、一条 JSONL、一次 loop 实例化，比 `ctx.llm.stream()` 重。缓解是卡片 agent 走**最小组合**（§7.2），但首字延迟仍会高于一次裸补全。**未实测**，记为 V12。
+
+**二、会话数等于卡片数。** 这就是 §4.4 的选项乙，其已知弱点是会话列表被淹没（§2.7：`origin` 是封闭联合，借 `'subagent'` 会改掉四处子代理行为，不能用来隐藏）。三条缓解，按可靠性递降：
+
+- **阅读接管期侧栏不可见**（§2.3、§8）。`shell.overlay` 覆盖三栏，所以读者在阅读时根本看不到全局列表；污染只在退出阅读器后可见。
+- **右栏的列表是我们自己的**，来自 `reading-store` 的 `document → sessions` 索引，天然按文档过滤（`SessionResultFilter` 没有 document 轴，§2.1）。
+- **独立产品可以不挂 `ui-workspace`**——它只是 [`packages/bundle/web-app/cordis.patch.yml:246`](../../../packages/bundle/web-app/cordis.patch.yml) 的一个普通条目。**但这不免费**：`uiWorkspace` 是 `ui-sidebar`、`ui-directory-picker-native`、`ui-directory-picker-browse`、`ui-agent-preset` 四个插件的**硬注入**依赖，摘掉它会连带停掉侧栏外壳与**两个目录选择器**，而 §7.1 正打算复用后者 ⇒ 走这条路就必须自建目录选择器。其余引用（`ui-chat`、`ui-conversation`）是 `import type {}`，纯编译期，不受影响。**取哪条路记为 V13。**
+
+**三、每条会话可能触发标题生成。** `session-title-*-llm` 按 cadence 发辅助模型调用，20 张卡就是 20 次额外调用。自有 profile 里可以关掉或改 cadence，但**必须显式决定**，不能默认带过来。
+
+### 9.4 并发：卡片之间并发，卡片内部串行
+
+**事实：一个 dsh agent 是串行 driver。** `followup()` 把提示**入队**到 `Inbox` 的 `next-turn` 列表，turn 一次消费一条（[`inbox.ts` 的 `claim`](../../../packages/core/agent/src/inbox.ts)），`whenIdle()` 等到整体静默。
+
+**这条约束落在一张卡内部，那正是它该在的地方**——同一张卡的追问本就是顺序的。**卡片之间是不同的 agent，天然并发**：读者可以同时开四张卡等四个答案，与 ow 一致。
+
+ow 自己的注释诚实记下：7 张以上会在 Chrome 每源 6 连接处排队，两次测量实际损害都无效，所以**这个损害从未被测出**。我们的传输不同（Typert `@Remote` 走 `/api`，§7.4），该数字不可沿用；真需要限流时，那是**一条针对在途请求数的独立限制加一个可见的等待状态**，不是把卡片上限调小。
+
+### 9.5 停放：纯表现状态
+
+磁吸 dock 与会话无关，是卡片的位置状态，**存 `reading-store`**。三条 ow 用缺陷换来的教训原样复刻：
+
+- **dock 的 `left` 是常量，不是算出来的**（ow B-207）。原先跟着文本列算，开右轨时一张**已经停好的** capsule 横跳 332px。「停放意味着读者把东西放下了，期望在原地找到它」，而「它不动」**没法靠重算维持**：那要求枚举每一条会移动列的规则，ow 侧 `grep` 出 29 条，无人维护该集合。代价是宽屏下 dock 不再紧贴文本——**可预测的位置比邻接更值钱**，因为拖放手势和回望都依赖它。
+- **capsule 宽度只有一个值**（ow B-201）。曾有 36px 竖排作「优雅降级」，实测宽屏阅读模式下 1512 以下**每个**视口都落进去，而一张读不出动作名的 capsule「不是停放的卡片，是一道计数杠」。宽度固定，让**布局**去让位。
+- **停放期间流不中断**。ow 靠 portal 保证（unmount 会 abort 流）；本设计里流由会话持有、不由组件持有，所以这是白得的——但仍要有一档测试扣住响应来证明它，因为它是产品承诺而不只是实现细节。
+
+dock 在专注模式下整体消失（含每一个入口），与 ow 一致。
+
+### 9.6 归属自查
+
+| 事实 | 归属 | 理由 |
+| --- | --- | --- |
+| 卡片的全部轮次、锚点、开场动作 | 该卡的会话日志 | 模型可见 |
+| 卡片的位置、停没停、dock 顺序 | `reading-store` | 模型不可见，纯表现 |
+| 文档有哪些卡片会话 | `reading-store` 的 `document → sessions` 索引 | 缓存；真相在会话日志（§4.2） |
+| 卡片 agent 的工具集与提示词段 | 该 agent 的 `setup` 组合 | 按 agent 作用域，不是全局 |
+| 卡片上限、级联步长、停靠阈值、弹出距离 | `Config` | 部署可变的可调项 |
+---
+
+## 10. 与仓库规则的逐条自查
 
 | 规则（[AGENTS.md](../../../AGENTS.md)） | 本设计 |
 | --- | --- |
 | 能力接缝是完整三角，不是单一角色 | `documents`（Definition）+ `documents-local`（Provider）+ `reading-session`/`client-ui-reading`（Consumer）v1 同时存在 ✓ |
-| 模型可见 ⟺ 已记录 | §7.2 逐项对照：提问在 `source.kind: 'user'` 的消息里，excerpt 与文档标题在 `source.kind: 'reading-selection'` 的消息里，两条都是 `user/message`，全部落盘 ✓ |
+| 模型可见 ⟺ 已记录 | §7.2 逐项对照：提问在 `source.kind: 'user'` 的消息里，excerpt 与文档标题在 `source.kind: 'reading-selection'` 的消息里，两条都是 `user/message`，全部落盘。卡片走真实 turn，规则原样适用、原样满足 ✓ |
 | 注册即效果 | `documents.register()` 返回 disposer；slots / 投影 / 事件全走 `ctx.effect()` / `ctx.on()` ✓ |
 | invariant 只在独立观察可能发散时发布 | 仅 `reading-store` 发布（`document → sessions` 索引 vs 会话语料）；接缝本身不发布 ✓ |
 | 显式优于隐式，默认是 `resolve(request): Spec` | 标题/媒体类型/窗口默认全在提供方 `resolve`，`read()` 内无 `?? default` ✓ |
@@ -563,7 +687,7 @@ return { attachment: stored.ref, data: Buffer.from(stored.data).toString('base64
 
 ---
 
-## 10. 已知限制与取舍
+## 11. 已知限制与取舍
 
 **这些是设计的边界，不是待办清单。**
 
@@ -573,12 +697,16 @@ return { attachment: stored.ref, data: Buffer.from(stored.data).toString('base64
 - **自有 markdown 渲染臂意味着自担安全策略**。`MarkdownText` 的白名单（协议白名单、原始 HTML 字面化、KaTeX 无信任命令）必须**逐条复刻**，本地图片是唯一有意放开的口子，且只经 §7.4 的 `@Remote asset()`——浏览器永不直接拿到本地路径，且服务端必须做引用校验。
 - **不能新增持久会话事件类型**（§2.6）。这不是本设计的选择，是仓外插件的结构性约束。任何「给会话加一个新的durable事实」的需求，都只能搭载在已知事件的载荷里，或接受该会话在原生 dsh 中无法重载。
 - **锚点在文档被大改时会 `lost`**。孤儿标注保留、可见、不自动删除。
+- **每条卡片会话可能触发标题生成**（§9.3 三）。`session-title-*-llm` 按 cadence 发辅助模型调用，20 张卡就是 20 次额外调用。自有 profile 里可关可改，但必须显式决定，不能默认带过来。
+- **会话数等于卡片数**（§9.3 二）。这是 §4.4 的选项乙。三条缓解（阅读期侧栏不可见、右栏列表按文档过滤、可摘 `ui-workspace`）都在 §9.3，第三条有连带代价，记为 V13。
+- **卡片之间互不可见**。各自一条会话，卡片 B 引用不到卡片 A 的结论。这是卡片独立的直接后果，不是缺陷。
+- **每张卡是一条真实会话，不是一次调用**（§9.3 一）。一个 agent、一条 JSONL、一次 loop 实例化；首字延迟高于裸补全，缓解是卡片 agent 走最小组合。未实测，V12。
 - **v1 只读**。改文件让用户对 Agent 说，`edit`/`write` 工具与权限层本就在。
 - **只支持 md/txt**。epub/pdf 是新提供方，不是新接缝。
 
 ---
 
-## 11. 里程碑
+## 12. 里程碑
 
 每个里程碑一个 PR，浏览器内人工验收后再合。**验收条件必须能被一个人在界面上点出来。**
 
@@ -589,25 +717,32 @@ return { attachment: stored.ref, data: Buffer.from(stored.data).toString('base64
 | **M3** | 大纲与渲染补全 | 点大纲条目跳到对应位置；本地图片显示；代码高亮；mermaid 渲染 | 无位置持久化 |
 | **M4** | 阅读状态 | 关掉重开回到上次位置；书签可加可跳；最近目录可用 | 无标注、无助读 |
 | **M5** | 锚点 | 外部改文档后重开，书签仍在正确位置或被标记为孤儿 | 无标注 UI |
-| **M6** | 助读 turn | 划词 → 提问 → 看见流式回答；带 `reading-selection` 来源的消息落日志；投影可见；**该会话在原生 dsh 里仍能打开** | 无 dock、无多窗口 |
-| **M7** | 助读界面 | 多助读窗口、dock、专注模式 | 无标注 |
-| **M8** | 标注 + 文档会话列表 | 划词加批注并持久；文档侧栏列出该文档的全部会话；invariant 通过；**若 V2 选丙**：「展开为独立会话」可用且 `parentSession` 层级正确 | — |
+| **M6** | 助读卡片与追问 | 划词 → 点动作 → 看见流式回答；**在同一张卡里追问，回答引用得到前一轮**；关掉浏览器重开，卡片连同全部轮次重建；带 `reading-selection`（含 `card`）来源的消息落日志、投影可见；**该会话在原生 dsh 里仍能打开** | 无 dock、无多卡片、无右栏 |
+| **M7** | 多卡片、停放与右栏 | 多卡片并存与级联；**两张卡同时流式互不阻塞**；拖到左槽停靠成 capsule、点击复原、向右弹出、dock 内重排；overlay 下收成计数 tab；专注模式整体消失；**扣住响应证明停放期间流不中断**；右栏列出本文档全部会话、可切换、可导出；**V13 已裁定并落实** | 无标注 |
+| **M8** | 标注 + 索引 invariant | 划词加批注并持久；`document → sessions` 索引的 invariant 通过（含一次人为漂移后的重建）；右栏的清空 / 导出按 V14 裁定的语义落实 | — |
 
-> **M6 与 M8 的形态取决于 V2**（§4.4，未裁定）。M6 需要知道「取或建阅读会话」的规则；M8 的 fork 入口只在选丙时存在。**V2 是 M6 的前置**，其余里程碑不受影响。
+> **V9 裁定「一张卡一条会话」之后，V2 随之落定为选项乙**（§4.4）：一个文档的会话数等于卡片数，不再有「常驻会话」这个概念，也没有 fork 入口。乙原本的弱点（列表淹没）由 §9.3 的三条缓解承担，其中第三条记为 **V13，阻塞 M7**。
+>
+> **右栏的清空 / 保存 / 导出语义记为 V14**（§8），阻塞 M8 的对应验收，不阻塞 M6–M7 的右栏骨架。
 
 **判据 3（模型可用）在 M6 之后由 `dsh-tool-documents` 兑现，不占里程碑**——它是接缝设计的验证：加它不应触碰前面任何一个包。
 
 ---
 
-## 12. 剩余未决
+## 13. 剩余未决
 
 | # | 问题 | 状态 | 结论 / 怎么定 |
 | --- | --- | --- | --- |
 | **V1** | `reading/attach` 是否 `ignorable: true` | **已查实，问题作废** | **仓外插件根本不能新增持久会话事件类型**（§2.6）：`Session.append` 无 `ignorable` 入口，仓外类型不在 `KNOWN_SESSION_EVENT_TYPES` 里「by construction」，重载必被拒。→ 改为搭载 `user/message.source`（§4.2），已核实 `source.kind` 不受封闭校验 |
-| **V2** | 阅读会话的创建时机与生命周期 | **未裁定，分析已完成** | 三条边界事实、三个选项的完整比较、倾向（丙：一条常驻 + 显式 fork）与其代价，全部记录在 **§4.4**。**需产品裁定，M6 之前必须定** |
+| **V2** | 阅读会话的创建时机与生命周期 | **已随 V9 落定（2026-09-07）** | 选项**乙**：一张卡一条会话，会话数等于卡片数。§4.4 记录的三个选项与边界事实仍然成立，只是乙的弱点（列表淹没）改由 §9.3 的三条缓解承担，而非靠选甲/丙回避。「常驻会话」与 fork 入口不再存在 |
 | **V3** | 独立仓库如何消费 `dsh.client.platform: web` 客户端插件构建链 | **已查实** | `package.json` 声明 `dsh.client.platform: 'web'` + 导出 `./client` bundle，Host 侧**扫描已启用的 Loader 条目并在 `/plugins` 下供给，无需逐插件接线**。约束：① 启动前 `lib/client.js` 必须已构建，缺失则**响亮失败**；② 共享模块基线 `PLATFORM_MODULES` 只有 `react` / `react-dom` / `@deepseek-ai/cordis` / `client-store` / `client-ui-slots` / **`client-ui-primitives`**——`micromark`/`mdast-util-*`/`mermaid` 不在其中，须打进自己的 bundle（tsdown 默认行为）；③ `ui-primitives` 在基线内 ⇒ `CodeBlock` 复用零成本 |
 | **V4** | 图片字节如何暴露给浏览器且带鉴权 | **已查实** | **不建 HTTP 路由**，经 Typert `@Remote` 走已鉴权的 `/api`，见 §7.4。附带发现：授权必须照抄 `referencedImage` 的引用校验，否则构成任意文件读 |
 | **V5** | `@Remote` / Typert 是否为客户端调用 Host 的正路 | **已查实** | **是**。[adding-a-remote-api.md](../../../docs/cookbook/adding-a-remote-api.md) 五步法：Host 服务 `extends TypertRemoteService`（服务键与线命名空间绑定），方法标 `@Remote`；签名不合线约定时写 `remoteExport*` 适配器；`Agent`/`Session` 这类查找对象只能占顶层参数位；支持取消的方法以 `signal: AbortSignal` 收尾 |
+| **V9** | 助读卡片是调用还是会话 | **已裁定（2026-09-07）** | **一张卡就是一条会话**（`ctx.agents.create`，卡片专属最小组合）。得到追问连续、刷新可重建、工具可用、Agent 与记忆系统可见，并且**「升级」机制整个不再产生**；代价三条见 **§9.3**。memo D2「助读进会话日志 ⇒ 记忆系统可直接读日志」的理由成立 |
+| **V12** | 卡片会话的首字延迟与跨卡前缀缓存 | 未测 | `ctx.agents.create()` + 一次 turn 对比裸补全的 TTFT；以及卡片 agent 组合相同时，供应商侧前缀缓存能否跨会话命中。已知量：`text-turn` profile 系统提示词 4,712 B + 工具 schema 36,003 B ≈ 40.7 KB，`agent-instructions` 达 82.6 KB（录制快照实测）。不阻塞里程碑，影响是否需要为开场动作做优化 |
+| **V13** | 是否摘掉 `ui-workspace` | **已查实可行，待裁定** | 摘掉即消除全局列表污染。**代价**：`uiWorkspace` 是 `ui-sidebar` / `ui-directory-picker-native` / `ui-directory-picker-browse` / `ui-agent-preset` 四者的硬注入依赖 ⇒ 连带停掉侧栏外壳与两个目录选择器，§7.1 的复用随之作废，须自建目录选择器。其余引用是 `import type {}`，纯编译期。**阻塞 M7** |
+| **V14** | 右栏「清空 / 保存 / 导出」的语义 | 未裁定 | 会话日志 append-only，**无清空原语**：只能是「删除并新建」或「触发 compaction」，二者对读者不同。「保存」若指持久化则冗余，应只作导出。见 §8。**阻塞 M8 的对应验收** |
+| V10 | 卡片重建的保真度 | 未查 | 刷新后按 `document → sessions` 索引重建卡片，轮次来自会话日志、位置来自 `reading-store`，但视口可能已变。是照搬旧坐标再钳制，还是按当前视口重新级联？影响 M6 的重建验收 |
 | V6 | 大文档（>1MB）的分窗策略与 `streamText` 的配合 | 未查 | 实测 |
 | **V7** | 阅读会话在原生 dsh 中的降级观感 | **已查实** | **优雅降级**：未知 `source.kind` 走 `contextProvenance` 的文档化默认 `{ role: 'inject', label: kind }`，显示为标着 `reading-selection` 的注入上下文。**附带发现**：非 `'user'` 来源一律归为 `context` 节点 ⇒ 助读须拆成两条消息，见 §7.2 |
 | **V8** | 自注册的 `reading-selection` 节点定义与 `ui-chat` 的 `messageDefinition` 同时 `match` 时的优先级 | 未查 | 读 `ConversationDefinitionRegistry` 的匹配顺序；影响 M7 的卡片渲染 |

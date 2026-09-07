@@ -16,7 +16,7 @@ verified_at: 2026-09-06
 >
 > **毕业判据**：下文 §6 的 D1–D4 四条决策全部冻结后，本文提炼为 [`plans/active/`](../plans/active/index.md) 下的正式计划，本备忘随即删除。在此之前它会被反复讨论、反复改写。
 >
-> **当前进展（2026-09-06）**：假设 A1 / A2 / A4 / A5 已查实（见 §8），D1 与 D3 已裁定，架构设计已产出 → [`plans/active/2026-09-06-reading-capability-architecture.md`](../plans/active/2026-09-06-reading-capability-architecture.md)。本备忘保留的价值仅剩**规模测算**（§2、§4）与 **ow 侧 ADR 清单**（§7）；设计相关内容一律以计划文档为准。
+> **当前进展（2026-09-07）**：假设 A1 / A2 / A4 / A5 已查实（见 §8），D1 与 D3 已裁定，架构设计已产出 → [`plans/active/2026-09-06-reading-capability-architecture.md`](../plans/active/2026-09-06-reading-capability-architecture.md)。**D2（助读走哪条路）已裁定并细化**：助读卡片**一张卡就是一条会话**（`ctx.agents.create`，卡片专属最小组合），追问走 `followup()`。D2「助读全程进 session log ⇒ 记忆系统可直接读日志」这条理由成立。D1 的 V2 随之落定为选项乙。详见计划文档 §7.2、§8、§9。本备忘保留的价值仅剩**规模测算**（§2、§4）与 **ow 侧 ADR 清单**（§7）；设计相关内容一律以计划文档为准。
 
 ---
 

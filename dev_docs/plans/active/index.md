@@ -20,4 +20,4 @@ verified_at: 2026-09-06
 
 ## 列表
 
-- [阅读能力架构设计](2026-09-06-reading-capability-architecture.md) — 把 Web 阅读做成 `ctx.documents` 能力接缝；`document ↔ session` 用会话投影 + 可重建索引两套机制；UI 落 `shell.overlay`；六包划分与 M1–M8
+- [阅读能力架构设计](2026-09-06-reading-capability-architecture.md) — 把 Web 阅读做成 `ctx.documents` 能力接缝；`document ↔ session` 用会话投影 + 可重建索引两套机制；助读卡片一张卡就是一条会话、可追问、卡片间并发，阅读界面内自建右栏承载会话列表与完整转录；UI 落 `shell.overlay`；六包划分与 M1–M8
